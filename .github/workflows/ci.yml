@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-postgresql:
+    name: ubuntu / PostgreSQL 18
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: folhas_phase3_test
+          POSTGRES_PASSWORD: phase3_ci_only
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d folhas_phase3_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - name: Restore locked dependencies
+        run: dotnet restore --locked-mode
+
+      - name: Build backend integration tests
+        run: dotnet build tests/FolhasDaMichelly.Infrastructure.Tests --configuration Release --no-restore
+
+      - name: Test migrations and synchronization against PostgreSQL
+        env:
+          FOLHAS_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Database=folhas_phase3_test;Username=postgres;Password=phase3_ci_only;Include Error Detail=false
+        run: dotnet test tests/FolhasDaMichelly.Infrastructure.Tests --configuration Release --no-build --logger trx --results-directory artifacts/test-results/postgresql
+
+  build-test-publish:
+    name: ${{ matrix.os }} / ${{ matrix.rid }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-26
+            rid: osx-arm64
+          - os: windows-2025
+            rid: win-x64
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - name: Restore locked dependencies
+        run: dotnet restore --locked-mode
+
+      - name: Verify formatting
+        run: dotnet format FolhasDaMichelly.slnx --no-restore --verify-no-changes
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build --logger trx --results-directory "artifacts/test-results/${{ matrix.rid }}"
+
+      - name: Publish desktop dry-run
+        run: dotnet publish src/FolhasDaMichelly.Desktop/FolhasDaMichelly.Desktop.csproj --configuration Release --runtime ${{ matrix.rid }} --self-contained false --no-restore --output "artifacts/publish/${{ matrix.rid }}"
+
+      - name: Upload dry-run artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-${{ matrix.rid }}
+          path: artifacts/publish/${{ matrix.rid }}
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,52 @@
+{
+  "case": "rescisao_sindicato_primeiro",
+  "documentType": "Termination",
+  "pageCount": 1,
+  "confidence": "High",
+  "fields": [
+    {
+      "name": "SindicatoCnpj",
+      "value": "04252011000110",
+      "role": "UnionTaxId",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "EmpregadorCnpj",
+      "value": "11222333000181",
+      "role": "EmployerTaxId",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "Empregador",
+      "value": "MICHELLY SERVICOS CONTABEIS LTDA",
+      "role": "EmployerName",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "TrabalhadorCpf",
+      "value": "52998224725",
+      "role": "EmployeeCpf",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "DataDesligamento",
+      "value": "2026-08-20",
+      "role": "EventDate",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "ValorLiquido",
+      "value": "7654.32",
+      "role": "TotalAmount",
+      "page": 1,
+      "confidence": 0.96
+    }
+  ],
+  "candidates": [],
+  "findings": []
+}

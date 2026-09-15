@@ -1,0 +1,193 @@
+name: Release packaging
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: SemVer com três componentes, sem prefixo v
+        required: true
+        default: 0.12.7
+        type: string
+      channel:
+        description: Canal de maturidade
+        required: true
+        default: beta
+        type: choice
+        options:
+          - beta
+          - stable
+      signing_mode:
+        description: Validation gera beta não distribuível; signed exige secrets e aprovação
+        required: true
+        default: validation
+        type: choice
+        options:
+          - validation
+          - signed
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.version }}-${{ inputs.channel }}
+  cancel-in-progress: false
+
+jobs:
+  validate-inputs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate release request
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_CHANNEL: ${{ inputs.channel }}
+          SIGNING_MODE: ${{ inputs.signing_mode }}
+        run: |
+          if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Use SemVer com três componentes." >&2
+            exit 2
+          fi
+          if [[ "$RELEASE_CHANNEL" == "stable" && "$SIGNING_MODE" != "signed" ]]; then
+            echo "Stable exige assinatura." >&2
+            exit 3
+          fi
+          if [[ "$RELEASE_CHANNEL" == "stable" && ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Stable exige versão final sem sufixo ou metadata." >&2
+            exit 3
+          fi
+
+  validation-packages:
+    if: inputs.signing_mode == 'validation'
+    needs: validate-inputs
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-26
+            rid: osx-arm64
+          - os: windows-2025
+            rid: win-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+      - name: Restore locked dependencies
+        run: dotnet restore --locked-mode
+      - name: Package macOS validation artifact
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_CHANNEL: ${{ inputs.channel }}
+        run: ./tools/release/pack-macos.sh "$RELEASE_VERSION" "$RELEASE_CHANNEL" validation
+      - name: Package Windows validation artifact
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_CHANNEL: ${{ inputs.channel }}
+        run: ./tools/release/pack-windows.ps1 -Version $env:RELEASE_VERSION -Maturity $env:RELEASE_CHANNEL -Mode validation
+      - name: Upload non-distributable validation artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: phase10-validation-${{ matrix.rid }}-${{ inputs.version }}
+          path: artifacts/phase10/${{ matrix.rid }}-${{ inputs.channel }}
+          if-no-files-found: error
+          retention-days: 7
+
+  signed-windows:
+    if: inputs.signing_mode == 'signed'
+    needs: validate-inputs
+    runs-on: windows-2025
+    environment: release-${{ inputs.channel }}
+    env:
+      VPK_SIGN_PARAMS: ${{ secrets.WINDOWS_VPK_SIGN_PARAMS }}
+      VPK_AZURE_TRUSTED_SIGN_FILE: ${{ secrets.WINDOWS_VPK_AZURE_TRUSTED_SIGN_FILE }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+      - run: dotnet restore --locked-mode
+      - name: Package signed Windows release
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_CHANNEL: ${{ inputs.channel }}
+        run: ./tools/release/pack-windows.ps1 -Version $env:RELEASE_VERSION -Maturity $env:RELEASE_CHANNEL -Mode signed
+      - uses: actions/upload-artifact@v7
+        with:
+          name: signed-win-x64-${{ inputs.channel }}-${{ inputs.version }}
+          path: artifacts/phase10/win-x64-${{ inputs.channel }}
+          if-no-files-found: error
+          retention-days: 30
+
+  signed-macos:
+    if: inputs.signing_mode == 'signed'
+    needs: validate-inputs
+    runs-on: macos-26
+    environment: release-${{ inputs.channel }}
+    env:
+      BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_BUILD_CERTIFICATE_BASE64 }}
+      INSTALLER_CERTIFICATE_BASE64: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_BASE64 }}
+      P12_PASSWORD: ${{ secrets.APPLE_P12_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+      KEYCHAIN_PASSWORD: ${{ secrets.APPLE_KEYCHAIN_PASSWORD }}
+      VPK_SIGN_APP_IDENTITY: ${{ secrets.APPLE_SIGN_APP_IDENTITY }}
+      VPK_SIGN_INSTALL_IDENTITY: ${{ secrets.APPLE_SIGN_INSTALL_IDENTITY }}
+      VPK_NOTARY_PROFILE: folhas-notary
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+      - run: dotnet restore --locked-mode
+      - name: Install signing identities in a temporary keychain
+        shell: bash
+        run: |
+          : "${BUILD_CERTIFICATE_BASE64:?missing secret}"
+          : "${INSTALLER_CERTIFICATE_BASE64:?missing secret}"
+          : "${P12_PASSWORD:?missing secret}"
+          : "${APPLE_ID:?missing secret}"
+          : "${APPLE_PASSWORD:?missing secret}"
+          : "${APPLE_TEAM:?missing secret}"
+          : "${KEYCHAIN_PASSWORD:?missing secret}"
+          printf '%s' "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$RUNNER_TEMP/app.p12"
+          printf '%s' "$INSTALLER_CERTIFICATE_BASE64" | base64 --decode -o "$RUNNER_TEMP/installer.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/folhas-signing.keychain-db"
+          security set-keychain-settings -lut 21600 "$RUNNER_TEMP/folhas-signing.keychain-db"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/folhas-signing.keychain-db"
+          security import "$RUNNER_TEMP/app.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$RUNNER_TEMP/folhas-signing.keychain-db"
+          security import "$RUNNER_TEMP/installer.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$RUNNER_TEMP/folhas-signing.keychain-db"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/folhas-signing.keychain-db"
+          security list-keychain -d user -s "$RUNNER_TEMP/folhas-signing.keychain-db"
+          xcrun notarytool store-credentials "$VPK_NOTARY_PROFILE" --keychain "$RUNNER_TEMP/folhas-signing.keychain-db" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM" --password "$APPLE_PASSWORD"
+          echo "VPK_KEYCHAIN=$RUNNER_TEMP/folhas-signing.keychain-db" >> "$GITHUB_ENV"
+      - name: Package signed and notarized macOS release
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_CHANNEL: ${{ inputs.channel }}
+        run: ./tools/release/pack-macos.sh "$RELEASE_VERSION" "$RELEASE_CHANNEL" signed
+      - uses: actions/upload-artifact@v7
+        with:
+          name: signed-osx-arm64-${{ inputs.channel }}-${{ inputs.version }}
+          path: artifacts/phase10/osx-arm64-${{ inputs.channel }}
+          if-no-files-found: error
+          retention-days: 30
+      - name: Remove temporary signing material
+        if: always()
+        shell: bash
+        run: |
+          security delete-keychain "$RUNNER_TEMP/folhas-signing.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/app.p12" "$RUNNER_TEMP/installer.p12"

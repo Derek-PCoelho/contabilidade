@@ -1,0 +1,45 @@
+{
+  "case": "decimo_terceiro",
+  "documentType": "ThirteenthSalary",
+  "pageCount": 1,
+  "confidence": "High",
+  "fields": [
+    {
+      "name": "EmpregadorCnpj",
+      "value": "11222333000262",
+      "role": "EmployerTaxId",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "Empregador",
+      "value": "MICHELLY SERVICOS CONTABEIS LTDA - FILIAL",
+      "role": "EmployerName",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "EmpregadoCpf",
+      "value": "52998224725",
+      "role": "EmployeeCpf",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "Competencia",
+      "value": "12/2026",
+      "role": "Competence",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "ValorLiquido",
+      "value": "2789.01",
+      "role": "TotalAmount",
+      "page": 1,
+      "confidence": 0.96
+    }
+  ],
+  "candidates": [],
+  "findings": []
+}

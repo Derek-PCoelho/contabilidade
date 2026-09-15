@@ -1,0 +1,45 @@
+{
+  "case": "ferias",
+  "documentType": "Vacation",
+  "pageCount": 1,
+  "confidence": "High",
+  "fields": [
+    {
+      "name": "EmpregadorCnpj",
+      "value": "11222333000181",
+      "role": "EmployerTaxId",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "Empregador",
+      "value": "MICHELLY SERVICOS CONTABEIS LTDA",
+      "role": "EmployerName",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "EmpregadoCpf",
+      "value": "52998224725",
+      "role": "EmployeeCpf",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "PeriodoDeGozo",
+      "value": "01/09/2026 a 30/09/2026",
+      "role": "VacationPeriod",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "ValorLiquido",
+      "value": "3245.67",
+      "role": "TotalAmount",
+      "page": 1,
+      "confidence": 0.96
+    }
+  ],
+  "candidates": [],
+  "findings": []
+}

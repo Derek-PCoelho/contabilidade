@@ -1,0 +1,45 @@
+{
+  "case": "pro_labore",
+  "documentType": "ProLabore",
+  "pageCount": 1,
+  "confidence": "High",
+  "fields": [
+    {
+      "name": "EmpresaCnpj",
+      "value": "11222333000181",
+      "role": "EmployerTaxId",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "Empresa",
+      "value": "MICHELLY SERVICOS CONTABEIS LTDA",
+      "role": "EmployerName",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "SocioCpf",
+      "value": "11144477735",
+      "role": "PartnerCpf",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "Competencia",
+      "value": "08/2026",
+      "role": "Competence",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "ValorLiquido",
+      "value": "4500.00",
+      "role": "TotalAmount",
+      "page": 1,
+      "confidence": 0.96
+    }
+  ],
+  "candidates": [],
+  "findings": []
+}

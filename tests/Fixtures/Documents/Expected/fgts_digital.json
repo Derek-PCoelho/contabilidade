@@ -1,0 +1,45 @@
+{
+  "case": "fgts_digital",
+  "documentType": "FgtsDigital",
+  "pageCount": 1,
+  "confidence": "High",
+  "fields": [
+    {
+      "name": "EmpregadorCnpj",
+      "value": "11222333000181",
+      "role": "EmployerTaxId",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "RazaoSocial",
+      "value": "MICHELLY SERVICOS CONTABEIS LTDA",
+      "role": "EmployerName",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "Competencia",
+      "value": "08/2026",
+      "role": "Competence",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "Vencimento",
+      "value": "2026-09-07",
+      "role": "DueDate",
+      "page": 1,
+      "confidence": 0.96
+    },
+    {
+      "name": "ValorTotal",
+      "value": "8765.43",
+      "role": "TotalAmount",
+      "page": 1,
+      "confidence": 0.96
+    }
+  ],
+  "candidates": [],
+  "findings": []
+}

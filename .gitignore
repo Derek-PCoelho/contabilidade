@@ -1,0 +1,43 @@
+# Build outputs
+[Bb]in/
+[Oo]bj/
+artifacts/
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# IDE and OS
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+.DS_Store
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+appsettings.*.Local.json
+*.pfx
+*.p12
+*.pem
+*.key
+*.snk
+secrets.json
+
+# Local/private operational data
+data/
+private/
+samples/private/
+tests/Fixtures/Private/
+FolhasDaMichellyData/
+
+# Packaging and signing outputs
+*.app/
+*.dmg
+*.pkg
+*.msix
+*.nupkg
+*.snupkg

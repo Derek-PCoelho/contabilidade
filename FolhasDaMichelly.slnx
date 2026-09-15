@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FolhasDaMichelly.Application/FolhasDaMichelly.Application.csproj" />
+    <Project Path="src/FolhasDaMichelly.Contracts/FolhasDaMichelly.Contracts.csproj" />
+    <Project Path="src/FolhasDaMichelly.Desktop/FolhasDaMichelly.Desktop.csproj" />
+    <Project Path="src/FolhasDaMichelly.Domain/FolhasDaMichelly.Domain.csproj" />
+    <Project Path="src/FolhasDaMichelly.Infrastructure/FolhasDaMichelly.Infrastructure.csproj" />
+    <Project Path="src/FolhasDaMichelly.Server/FolhasDaMichelly.Server.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FolhasDaMichelly.Application.Tests/FolhasDaMichelly.Application.Tests.csproj" />
+    <Project Path="tests/FolhasDaMichelly.Domain.Tests/FolhasDaMichelly.Domain.Tests.csproj" />
+    <Project Path="tests/FolhasDaMichelly.Infrastructure.Tests/FolhasDaMichelly.Infrastructure.Tests.csproj" />
+    <Project Path="tests/FolhasDaMichelly.Server.Tests/FolhasDaMichelly.Server.Tests.csproj" />
+    <Project Path="tests/FolhasDaMichelly.Ui.Tests/FolhasDaMichelly.Ui.Tests.csproj" />
+  </Folder>
+</Solution>
