@@ -30,9 +30,16 @@ public final class RateLimiter {
 
     private final Map<String, Window> windows = new ConcurrentHashMap<>();
     private final Clock clock;
+    private final java.util.function.ToIntFunction<Policy> permits;
 
     public RateLimiter(Clock clock) {
+        this(clock, Policy::permits);
+    }
+
+    /** Limites configuráveis (padrão igual ao .NET). */
+    public RateLimiter(Clock clock, java.util.function.ToIntFunction<Policy> permits) {
         this.clock = clock;
+        this.permits = permits;
     }
 
     /** Retorna os segundos até a próxima janela quando o limite estourou; 0 quando liberado. */
@@ -42,7 +49,7 @@ public final class RateLimiter {
         var key = policy.name() + ":" + partition;
         var window = windows.compute(key, (k, w) -> w == null || w.minute != minute
                 ? new Window(minute, new AtomicInteger()) : w);
-        if (window.count.incrementAndGet() > policy.permits()) {
+        if (window.count.incrementAndGet() > permits.applyAsInt(policy)) {
             return Math.max(1, 60 - (millis / 1000) % 60);
         }
         if (windows.size() > 50_000) {

@@ -92,8 +92,9 @@ public class ServerConfiguration implements WebMvcConfigurer {
     }
 
     @Bean
-    public static RateLimiter rateLimiter(Clock clock) {
-        return new RateLimiter(clock);
+    public static RateLimiter rateLimiter(Clock clock, ServerSettings settings) {
+        return new RateLimiter(clock, policy -> settings.integer("rate-limit." + policy.name().toLowerCase(
+                java.util.Locale.ROOT), policy.permits()));
     }
 
     @Bean
