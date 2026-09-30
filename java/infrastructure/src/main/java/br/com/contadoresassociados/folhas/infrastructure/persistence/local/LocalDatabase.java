@@ -12,7 +12,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Banco local ({@code cache.db}) com uma conexão serializada por lock.
- * WAL, {@code busy_timeout} e {@code foreign_keys} ativos; permissões 0700/0600 fora do Windows.
+ * WAL, {@code busy_timeout}, {@code foreign_keys} e {@code secure_delete} ativos; permissões
+ * 0700/0600 fora do Windows; cifrado em repouso quando aberto com chave.
  */
 public final class LocalDatabase implements AutoCloseable {
 
@@ -32,24 +33,121 @@ public final class LocalDatabase implements AutoCloseable {
     }
 
     public static LocalDatabase open(Path file) {
+        return open(file, null);
+    }
+
+    /**
+     * Abre o {@code cache.db}. Com {@code key}, o arquivo fica cifrado em repouso
+     * (SQLite3MultipleCiphers, esquema SQLCipher 4 — pendências 3.17/7.3). Um banco em claro
+     * gravado pela versão .NET é convertido no lugar na primeira abertura: é copiado para
+     * {@code cache.db.plain-backup}, recifrado com {@code PRAGMA rekey}, conferido e só então a cópia
+     * em claro é apagada. Chave errada falha com {@link LocalStorageException} sem alterar o arquivo.
+     */
+    public static LocalDatabase open(Path file, String key) {
         try {
             var dir = file.toAbsolutePath().getParent();
             if (dir != null) {
                 Files.createDirectories(dir);
             }
-            var c = DriverManager.getConnection("jdbc:sqlite:" + file.toAbsolutePath());
+            if (key != null) {
+                requireSafeKey(key);
+                if (Files.exists(file) && isPlaintextSqlite(file)) {
+                    encryptInPlace(file, key);
+                }
+            }
+            var c = DriverManager.getConnection(url(file, key));
             try (var st = c.createStatement()) {
+                // valida a chave antes de qualquer outra coisa
+                st.executeQuery("SELECT count(*) FROM sqlite_master").close();
                 st.execute("PRAGMA journal_mode=WAL");
                 st.execute("PRAGMA busy_timeout=5000");
                 st.execute("PRAGMA foreign_keys=ON");
                 st.execute("PRAGMA synchronous=NORMAL");
+                st.execute("PRAGMA secure_delete=ON");
+            } catch (SQLException e) {
+                c.close();
+                throw e;
             }
             var db = new LocalDatabase(file, c);
             new LocalSchemaMigrator().migrate(db);
             db.restrictPermissions();
             return db;
-        } catch (SQLException | IOException e) {
+        } catch (SQLException e) {
+            throw new LocalStorageException(e);
+        } catch (IOException e) {
             throw new IllegalStateException("Não foi possível abrir o banco local.", e);
+        }
+    }
+
+    /** Verdadeiro quando o arquivo começa com o cabeçalho de um SQLite não cifrado. */
+    public static boolean isPlaintextSqlite(Path file) throws IOException {
+        if (!Files.isRegularFile(file) || Files.size(file) < 16) {
+            return false;
+        }
+        try (var in = Files.newInputStream(file)) {
+            var header = in.readNBytes(16);
+            return new String(header, java.nio.charset.StandardCharsets.US_ASCII).equals("SQLite format 3\0");
+        }
+    }
+
+    private static void encryptInPlace(Path file, String key) throws IOException, SQLException {
+        var backup = Path.of(file.toAbsolutePath() + ".plain-backup");
+        // consolida o WAL no arquivo principal antes de copiar/recifrar
+        try (var c = DriverManager.getConnection("jdbc:sqlite:" + file.toAbsolutePath()); var st = c.createStatement()) {
+            st.execute("PRAGMA wal_checkpoint(TRUNCATE)");
+            st.executeQuery("PRAGMA journal_mode=DELETE").close();
+        }
+        Files.copy(file, backup, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        try (var c = DriverManager.getConnection("jdbc:sqlite:file:" + file.toAbsolutePath()
+                + "?cipher=sqlcipher&legacy=4"); var st = c.createStatement()) {
+            st.execute("PRAGMA rekey='" + key + "'");
+        }
+        try (var c = DriverManager.getConnection(url(file, key)); var st = c.createStatement()) {
+            st.executeQuery("SELECT count(*) FROM sqlite_master").close();
+            try (var rs = st.executeQuery("PRAGMA integrity_check")) {
+                if (!rs.next() || !"ok".equalsIgnoreCase(rs.getString(1))) {
+                    throw new SQLException("integrity_check falhou após cifrar o banco local.");
+                }
+            }
+        } catch (SQLException e) {
+            // restaura o original em claro: nenhum dado se perde
+            Files.copy(backup, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            throw e;
+        }
+        overwriteAndDelete(backup);
+        for (var suffix : new String[] {"-wal", "-shm"}) {
+            Files.deleteIfExists(Path.of(file.toAbsolutePath() + suffix));
+        }
+    }
+
+    /** Sobrescreve a cópia em claro antes de apagar (melhor esforço; SSDs podem reter blocos). */
+    private static void overwriteAndDelete(Path path) throws IOException {
+        if (!Files.exists(path)) {
+            return;
+        }
+        var size = Files.size(path);
+        try (var ch = java.nio.channels.FileChannel.open(path, java.nio.file.StandardOpenOption.WRITE)) {
+            var zeros = java.nio.ByteBuffer.allocate(64 * 1024);
+            long written = 0;
+            while (written < size) {
+                zeros.clear();
+                zeros.limit((int) Math.min(zeros.capacity(), size - written));
+                written += ch.write(zeros, written);
+            }
+            ch.force(true);
+        }
+        Files.delete(path);
+    }
+
+    private static String url(Path file, String key) {
+        var path = file.toAbsolutePath().toString();
+        return key == null ? "jdbc:sqlite:" + path : "jdbc:sqlite:file:" + path + "?cipher=sqlcipher&legacy=4&key=" + key;
+    }
+
+    /** A chave vai na URI e num PRAGMA: só base64url (gerada por {@code LocalDatabaseKeys}). */
+    private static void requireSafeKey(String key) {
+        if (key.length() < 32 || !key.matches("[A-Za-z0-9_-]+")) {
+            throw new IllegalArgumentException("Chave do banco local inválida.");
         }
     }
 
