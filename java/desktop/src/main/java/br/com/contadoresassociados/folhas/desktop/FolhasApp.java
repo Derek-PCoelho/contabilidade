@@ -73,6 +73,7 @@ public final class FolhasApp extends Application {
     private ReportsModel reports;
     private HistoryModel history;
     private SettingsModel settings;
+    private br.com.contadoresassociados.folhas.desktop.state.AccountModel account;
 
     private Section createSection(AppSection section, ShellState state) {
         if (clients == null) {
@@ -99,6 +100,14 @@ public final class FolhasApp extends Application {
                     services.reportsDirectory(), today.getYear(), today.getMonthValue());
             settings = new SettingsModel(services.emailConnection(), services.catalog(), services.backup(), services.updates(),
                     services.preferences(), documents, reports, dispatch, state, tasks, services.clock());
+            account = new br.com.contadoresassociados.folhas.desktop.state.AccountModel(services.oidc(), state, tasks,
+                    java.time.ZoneId.systemDefault());
+            // Troca de sessão muda escopo e permissões: recarrega o que depende deles.
+            account.onSessionChanged(() -> {
+                documents.reload();
+                dispatch.reload();
+            });
+            account.refresh();
             settings.onCatalogChanged(() -> {
                 clients.loadClients();
                 documents.reload();
@@ -116,7 +125,7 @@ public final class FolhasApp extends Application {
             case DISPATCH -> new DispatchSection(dispatch);
             case REPORTS -> new ReportsSection(reports);
             case HISTORY -> new HistorySection(history);
-            case SETTINGS -> new SettingsSection(settings);
+            case SETTINGS -> new SettingsSection(settings, account);
             default -> new PendingSection(section.title(), section.description());
         };
     }

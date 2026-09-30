@@ -50,6 +50,8 @@ public final class DesktopServices implements AutoCloseable {
     private final ClientCatalogService catalog;
     private final DocumentReviewService review;
     private final DocumentRecognitionService recognition;
+    private final br.com.contadoresassociados.folhas.infrastructure.remote.DesktopOidcClient oidc;
+    private final br.com.contadoresassociados.folhas.infrastructure.remote.CentralApiClient api;
     private final DispatchWorkflowService dispatch;
     private final EmailAccountConnectionService emailConnection;
     private final br.com.contadoresassociados.folhas.application.incidents.IncidentManagement.Service incidents;
@@ -89,8 +91,18 @@ public final class DesktopServices implements AutoCloseable {
         this.database = opened.database();
         var reviewOptions = DocumentReviewOptions.defaults();
         var resolver = new SqliteLocalClientResolver(database);
+        // Perfil Conectado (pendência 6.1): com Server configurado, o escopo e as permissões vêm da
+        // sessão OIDC guardada no cofre; sem login não há permissão alguma (paridade com o .NET).
+        this.oidc = DesktopEnvironment.apiBaseAddress().map(address -> new br.com.contadoresassociados.folhas.infrastructure
+                .remote.DesktopOidcClient(java.net.URI.create(address), vault, null, null, null, null)).orElse(null);
+        this.api = oidc == null ? null : new br.com.contadoresassociados.folhas.infrastructure.remote.CentralApiClient(null,
+                oidc.authority(), vault, null,
+                br.com.contadoresassociados.folhas.application.updates.AppVersion.CURRENT.toString());
         this.review = new DocumentReviewService(new SqliteDocumentReviewStore(database),
-                () -> new DocumentReviewContext(LOCAL_SCOPE_KEY, LOCAL_ACTOR_ID, "Operador local"),
+                () -> {
+                    var ctx = executionContext();
+                    return new DocumentReviewContext(ctx.scopeKey(), ctx.actorId(), ctx.actorDisplayName());
+                },
                 new DocumentPeriodParser(), ValidationRules.defaults(reviewOptions), reviewOptions, clock, resolver);
         this.recognition = new DocumentRecognitionService(new PdfBoxTextExtractor(), new DeterministicDocumentClassifier(),
                 new ProfileDocumentParser(), resolver, new SqliteRecognitionCache(database, clock),
@@ -101,12 +113,12 @@ public final class DesktopServices implements AutoCloseable {
                 () -> review.revalidate(CancellationToken.NONE));
         var dispatchOptions = DispatchWorkflowOptions.defaults();
         var dispatchStore = new SqliteDispatchWorkflowStore(database);
-        java.util.function.Supplier<DispatchExecutionContext> context = () -> new DispatchExecutionContext(LOCAL_SCOPE_KEY,
-                LOCAL_ACTOR_ID, "Operador local", LOCAL_PERMISSIONS);
+        java.util.function.Supplier<DispatchExecutionContext> context = this::executionContext;
         this.dispatch = new DispatchWorkflowService(dispatchStore, review,
                 new DeterministicDispatchMessageComposer(catalog, clock, dispatchOptions),
                 new FakeEmailProvider(new FakeEmailProvider.Options(dataDirectory.resolve("FakeOutbox"), null, null), clock),
-                context::get, LOCAL_GUARD, new StandardDispatchReportExporter(clock, Clock.BRAZIL), clock, dispatchOptions,
+                context::get, api == null ? LOCAL_GUARD
+                        : new br.com.contadoresassociados.folhas.infrastructure.remote.HttpRemoteEmailSendGuard(api), new StandardDispatchReportExporter(clock, Clock.BRAZIL), clock, dispatchOptions,
                 new DefaultSensitiveTextRedactor());
         this.incidents = new br.com.contadoresassociados.folhas.application.incidents.IncidentManagement.Service(
                 new br.com.contadoresassociados.folhas.infrastructure.persistence.local.SqliteIncidentStore(database),
@@ -134,6 +146,26 @@ public final class DesktopServices implements AutoCloseable {
                 ? "A chave do banco local não estava no cofre. O arquivo anterior foi preservado em "
                         + opened.quarantinedFile().getFileName() + " e um novo banco foi criado."
                 : null;
+    }
+
+    public static final String UNAUTHENTICATED_CONNECTED_SCOPE = "unauthenticated-connected";
+    public static final String UNAUTHENTICATED_CONNECTED_ACTOR = "unauthenticated-connected-operator";
+
+    /** Contexto atual: Local, Conectado com sessão ou Conectado sem sessão (sem permissões). */
+    public DispatchExecutionContext executionContext() {
+        if (oidc == null) {
+            return new DispatchExecutionContext(LOCAL_SCOPE_KEY, LOCAL_ACTOR_ID, "Operador local", LOCAL_PERMISSIONS);
+        }
+        var session = oidc.current().filter(s -> !s.expired(clock.nowUtc().toInstant()));
+        return session.map(s -> new DispatchExecutionContext(s.scopeKey(), s.userId().toString(),
+                s.displayName() == null || s.displayName().isBlank() ? s.email() : s.displayName(), s.permissions()))
+                .orElseGet(() -> new DispatchExecutionContext(UNAUTHENTICATED_CONNECTED_SCOPE,
+                        UNAUTHENTICATED_CONNECTED_ACTOR, "Operador conectado", Set.of()));
+    }
+
+    /** Cliente OIDC do Server; {@code null} no perfil Local. */
+    public br.com.contadoresassociados.folhas.infrastructure.remote.DesktopOidcClient oidc() {
+        return oidc;
     }
 
     public static DesktopServices create(Path dataDirectory) {

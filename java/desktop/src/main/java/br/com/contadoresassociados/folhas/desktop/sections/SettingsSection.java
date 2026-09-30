@@ -28,11 +28,13 @@ import javafx.stage.FileChooser;
 public final class SettingsSection implements Section {
 
     private final SettingsModel model;
+    private final br.com.contadoresassociados.folhas.desktop.state.AccountModel account;
     private final Node root;
 
-    public SettingsSection(SettingsModel model) {
+    public SettingsSection(SettingsModel model, br.com.contadoresassociados.folhas.desktop.state.AccountModel account) {
         this.model = model;
-        var content = new VBox(14, email(), backup(), folders(), serverHelp(), updates(), retention(), about(), support());
+        this.account = account;
+        var content = new VBox(14, account(), email(), backup(), folders(), serverHelp(), updates(), retention(), about(), support());
         content.setMaxWidth(1040);
         var centered = new HBox(content);
         centered.setAlignment(Pos.TOP_CENTER);
@@ -49,6 +51,29 @@ public final class SettingsSection implements Section {
     @Override
     public void onShown() {
         model.open();
+        account.refresh();
+    }
+
+    // ------------------------------------------------------------------ conta do escritório (6.1)
+
+    private Node account() {
+        var signIn = button("Entrar com a conta do escritório", "primary", account::signIn);
+        signIn.disableProperty().bind(account.canSignIn().not());
+        var cancel = visibleWhen(button("Cancelar login", "ghost", account::cancelSignIn), account.signingIn);
+        var renew = visibleWhen(button("Renovar sessão", "ghost", account::renew), account.signedIn());
+        var signOut = visibleWhen(button("Sair da conta", "secondary", account::signOut), account.signedIn());
+        var actions = new javafx.scene.layout.FlowPane(8, 8, hiddenWhen(signIn, account.signedIn()), cancel, renew, signOut);
+        var server = muted("Server do escritório: " + account.serverAddress());
+        var connected = new VBox(10, server, actions,
+                muted("O login abre a página segura do escritório no navegador. A senha nunca é digitada neste aplicativo; "
+                        + "a sessão fica no cofre protegido do sistema e pode ser encerrada aqui ou pelo administrador."));
+        var card = card(10, eyebrow("CONTA DO ESCRITÓRIO"), h2("Login no Server central"),
+                wrap(colored(text(account.status), "#514C42", true)), muted(account.details));
+        if (account.connectedProfile()) {
+            card.getChildren().add(connected);
+        }
+        card.setAccessibleText("Conta do escritório");
+        return card;
     }
 
     // ------------------------------------------------------------------ e-mail
@@ -171,7 +196,7 @@ public final class SettingsSection implements Section {
                 colored(new Label("Perfil compartilhado"), "#8C691B", true),
                 muted("Server é o serviço central que atende vários computadores; PostgreSQL é o banco usado por esse serviço. Eles só são necessários para dados compartilhados, controle central e integrações reais."),
                 colored(new Label("Token de acesso"), "#8C691B", true),
-                muted("É uma autorização temporária criada pelo login — nunca algo que o cliente precise inventar ou digitar. O sistema guarda a sessão no cofre protegido do macOS ou Windows.")), false);
+                muted("É uma autorização temporária criada pelo botão “Entrar com a conta do escritório” — nunca algo que o cliente precise inventar ou digitar. O sistema guarda a sessão no cofre protegido do macOS ou Windows e a renova sozinho enquanto for válida.")), false);
     }
 
     // ------------------------------------------------------------------ atualizações
