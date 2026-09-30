@@ -1,0 +1,64 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index e283dd5..c2250db 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -100,3 +100,59 @@ jobs:
+           path: artifacts/publish/${{ matrix.rid }}
+           if-no-files-found: error
+           retention-days: 7
++
++  java:
++    name: ubuntu / Java 25 + PostgreSQL 17
++    runs-on: ubuntu-latest
++    services:
++      postgres:
++        image: postgres:17-alpine
++        env:
++          POSTGRES_PASSWORD: java_ci_only
++          POSTGRES_USER: postgres
++        ports:
++          - 5432:5432
++        options: >-
++          --health-cmd "pg_isready -U postgres"
++          --health-interval 5s
++          --health-timeout 5s
++          --health-retries 10
++    defaults:
++      run:
++        working-directory: java
++
++    steps:
++      - name: Checkout
++        uses: actions/checkout@v7
++
++      - name: Setup Java
++        uses: actions/setup-java@v5
++        with:
++          distribution: temurin
++          java-version: '25'
++
++      - name: Setup Gradle
++        uses: gradle/actions/setup-gradle@v5
++
++      - name: Virtual display for the JavaFX window test
++        run: |
++          sudo apt-get update -qq
++          sudo apt-get install -y -qq xvfb libgtk-3-0 libgl1
++          Xvfb :99 -screen 0 1440x900x24 &
++
++      - name: Build and test (all modules)
++        env:
++          DISPLAY: ':99'
++          FOLHAS_TEST_PG_URL: jdbc:postgresql://127.0.0.1:5432/postgres
++          FOLHAS_TEST_PG_USER: postgres
++          FOLHAS_TEST_PG_PASSWORD: java_ci_only
++        run: ./gradlew build --no-daemon
++
++      - name: Upload Java test reports
++        if: always()
++        uses: actions/upload-artifact@v7
++        with:
++          name: java-test-reports
++          path: java/**/build/reports/tests/
++          if-no-files-found: ignore
++          retention-days: 7

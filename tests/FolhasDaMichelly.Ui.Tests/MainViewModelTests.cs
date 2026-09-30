@@ -736,6 +736,9 @@ public sealed class MainViewModelTests
             new EmptyReviewService(),
             service,
             connection);
+        // Dados sintéticos de 08/2026: fixa a competência (o padrão é o mês corrente).
+        viewModel.SelectedOperationalYear = viewModel.OperationalYears.Single(item => item.Year == 2026);
+        viewModel.SelectedOperationalMonth = viewModel.OperationalMonths.Single(item => item.Month == 8);
 
         await viewModel.LoadReviewWorkspaceAsync();
 
@@ -1267,6 +1270,9 @@ public sealed class MainViewModelTests
             new UnusedRecognitionService(),
             new EmptyReviewService(),
             transientService);
+        // Dados sintéticos de 08/2026: fixa a competência (o padrão é o mês corrente).
+        transientViewModel.SelectedOperationalYear = transientViewModel.OperationalYears.Single(item => item.Year == 2026);
+        transientViewModel.SelectedOperationalMonth = transientViewModel.OperationalMonths.Single(item => item.Month == 8);
         await transientViewModel.LoadReviewWorkspaceAsync();
 
         Assert.True(transientViewModel.CanExecuteSelectedDispatch);
@@ -1280,6 +1286,9 @@ public sealed class MainViewModelTests
             new UnusedRecognitionService(),
             new EmptyReviewService(),
             permanentService);
+        // Dados sintéticos de 08/2026: fixa a competência (o padrão é o mês corrente).
+        permanentViewModel.SelectedOperationalYear = permanentViewModel.OperationalYears.Single(item => item.Year == 2026);
+        permanentViewModel.SelectedOperationalMonth = permanentViewModel.OperationalMonths.Single(item => item.Month == 8);
         await permanentViewModel.LoadReviewWorkspaceAsync();
 
         Assert.False(permanentViewModel.CanExecuteSelectedDispatch);
