@@ -100,4 +100,34 @@ public final class SqliteKeyValueStores {
             put(db, clock, pilotKey(workspace.scopeKey()), Json.write(workspace));
         }
     }
+
+    /** Última {@code sequence} de manifesto aceita por canal (anti-replay das atualizações, 7.2). */
+    public static final class UpdateSequences
+            implements br.com.contadoresassociados.folhas.infrastructure.updates.SignedFeedAppUpdateService.SequenceStore {
+        private final LocalDatabase db;
+        private final Clock clock;
+
+        public UpdateSequences(LocalDatabase db, Clock clock) {
+            this.db = db;
+            this.clock = clock;
+        }
+
+        @Override
+        public long lastAccepted(String channelKey) {
+            return get(db, "desktop.updates.sequence." + channelKey).map(v -> {
+                try {
+                    return Long.parseLong(v.strip());
+                } catch (NumberFormatException e) {
+                    return 0L;
+                }
+            }).orElse(0L);
+        }
+
+        @Override
+        public void accept(String channelKey, long sequence) {
+            if (sequence > lastAccepted(channelKey)) {
+                put(db, clock, "desktop.updates.sequence." + channelKey, Long.toString(sequence));
+            }
+        }
+    }
 }
