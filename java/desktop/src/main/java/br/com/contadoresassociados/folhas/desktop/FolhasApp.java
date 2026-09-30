@@ -3,6 +3,7 @@ package br.com.contadoresassociados.folhas.desktop;
 import br.com.contadoresassociados.folhas.desktop.sections.ClientsSection;
 import br.com.contadoresassociados.folhas.desktop.sections.DispatchSection;
 import br.com.contadoresassociados.folhas.desktop.sections.DocumentsSection;
+import br.com.contadoresassociados.folhas.desktop.sections.HistorySection;
 import br.com.contadoresassociados.folhas.desktop.sections.HomeSection;
 import br.com.contadoresassociados.folhas.desktop.sections.PendingSection;
 import br.com.contadoresassociados.folhas.desktop.sections.ReportsSection;
@@ -11,6 +12,7 @@ import br.com.contadoresassociados.folhas.desktop.state.AppSection;
 import br.com.contadoresassociados.folhas.desktop.state.ClientsModel;
 import br.com.contadoresassociados.folhas.desktop.state.DispatchModel;
 import br.com.contadoresassociados.folhas.desktop.state.DocumentsModel;
+import br.com.contadoresassociados.folhas.desktop.state.HistoryModel;
 import br.com.contadoresassociados.folhas.desktop.state.ReportsModel;
 import br.com.contadoresassociados.folhas.desktop.state.ShellState;
 import br.com.contadoresassociados.folhas.desktop.ui.UiTasks;
@@ -67,6 +69,7 @@ public final class FolhasApp extends Application {
     private DocumentsModel documents;
     private DispatchModel dispatch;
     private ReportsModel reports;
+    private HistoryModel history;
 
     private Section createSection(AppSection section, ShellState state) {
         if (clients == null) {
@@ -82,7 +85,12 @@ public final class FolhasApp extends Application {
             dispatch = new DispatchModel(services.dispatch(), services.emailConnection(), documents, state, tasks);
             dispatch.onShowDocuments(() -> state.show(AppSection.DOCUMENTS));
             dispatch.onShowReports(() -> state.show(AppSection.REPORTS));
-            dispatch.onReportIncident(attempt -> state.show(AppSection.HISTORY));
+            history = new HistoryModel(documents, dispatch, services.catalog(), services.incidents(), services.preferences(),
+                    state, tasks, services.clock(), java.time.ZoneId.systemDefault());
+            dispatch.onReportIncident(attempt -> {
+                history.startIncidentFor(attempt);
+                state.show(AppSection.HISTORY);
+            });
             var today = java.time.LocalDate.now(br.com.contadoresassociados.folhas.application.common.Clock.BRAZIL);
             reports = new ReportsModel(services.dispatch(), services.catalog(), dispatch, documents, state, tasks,
                     services.reportsDirectory(), today.getYear(), today.getMonthValue());
@@ -98,6 +106,7 @@ public final class FolhasApp extends Application {
             case DOCUMENTS -> new DocumentsSection(documents, state);
             case DISPATCH -> new DispatchSection(dispatch);
             case REPORTS -> new ReportsSection(reports);
+            case HISTORY -> new HistorySection(history);
             default -> new PendingSection(section.title(), section.description());
         };
     }

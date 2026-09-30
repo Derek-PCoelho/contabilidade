@@ -94,6 +94,8 @@ public final class DispatchModel {
     public final ObservableList<ProcessingBatch> batches = FXCollections.observableArrayList();
     public final ObservableList<DispatchItem> items = FXCollections.observableArrayList();
     public final ObservableList<DeliveryAttempt> attempts = FXCollections.observableArrayList();
+    public final ObservableList<br.com.contadoresassociados.folhas.contracts.dispatch.DispatchAuditEvent> auditEvents =
+            FXCollections.observableArrayList();
     public final ObservableList<DocumentDispatchGroup> approvedGroups = FXCollections.observableArrayList();
     public final ObservableList<DispatchItem> visibleItems = FXCollections.observableArrayList();
     public final ObservableList<DispatchAttachmentSnapshot> selectedAttachments = FXCollections.observableArrayList();
@@ -753,6 +755,7 @@ public final class DispatchModel {
                 .sorted(Comparator.comparing(DeliveryAttempt::startedAtUtc, Comparator.nullsLast(Comparator.reverseOrder()))).toList());
         items.setAll(workspace.items().stream()
                 .sorted(Comparator.comparing(DispatchItem::updatedAtUtc, Comparator.nullsLast(Comparator.reverseOrder()))).toList());
+        auditEvents.setAll(workspace.auditEvents());
         var current = currentItems();
         var byRecent = Comparator.comparing(DispatchItem::updatedAtUtc, Comparator.nullsLast(Comparator.reverseOrder()));
         var next = current.stream().filter(i -> i.id().equals(selectedId) && matchesSelectedPeriod(i.periodLabel())).findFirst()

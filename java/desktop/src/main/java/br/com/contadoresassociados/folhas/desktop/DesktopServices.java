@@ -52,6 +52,8 @@ public final class DesktopServices implements AutoCloseable {
     private final DocumentRecognitionService recognition;
     private final DispatchWorkflowService dispatch;
     private final EmailAccountConnectionService emailConnection;
+    private final br.com.contadoresassociados.folhas.application.incidents.IncidentManagement.Service incidents;
+    private final br.com.contadoresassociados.folhas.application.preferences.WorkspacePreferences.Store preferences;
     private final String startupNotice;
 
     /**
@@ -59,7 +61,10 @@ public final class DesktopServices implements AutoCloseable {
      * sem {@code email.send}, o envio real exige o perfil Conectado.
      */
     public static final Set<AppPermission> LOCAL_PERMISSIONS = Set.of(AppPermission.DOCUMENTS_PROCESS,
-            AppPermission.BATCH_APPROVE, AppPermission.EMAIL_DRAFT, AppPermission.AUDIT_EXPORT);
+            AppPermission.BATCH_APPROVE, AppPermission.EMAIL_DRAFT, AppPermission.AUDIT_EXPORT,
+            // Pendência 2.10 criou permissões próprias para incidentes; o operador local continua podendo
+            // consultar a auditoria e registrar ocorrências, como na versão .NET (que não verificava).
+            AppPermission.AUDIT_READ, AppPermission.INCIDENTS_MANAGE);
 
     /**
      * Sem servidor central não há quem autorize operações externas: o preflight falha fechado
@@ -100,6 +105,11 @@ public final class DesktopServices implements AutoCloseable {
                 new FakeEmailProvider(new FakeEmailProvider.Options(dataDirectory.resolve("FakeOutbox"), null, null), clock),
                 context::get, LOCAL_GUARD, new StandardDispatchReportExporter(clock, Clock.BRAZIL), clock, dispatchOptions,
                 new DefaultSensitiveTextRedactor());
+        this.incidents = new br.com.contadoresassociados.folhas.application.incidents.IncidentManagement.Service(
+                new br.com.contadoresassociados.folhas.infrastructure.persistence.local.SqliteIncidentStore(database),
+                dispatchStore, context::get, new DefaultSensitiveTextRedactor(), clock);
+        this.preferences = new br.com.contadoresassociados.folhas.infrastructure.persistence.local.SqliteKeyValueStores
+                .Preferences(database, clock);
         this.emailConnection = new EmailAccountConnectionService(new FakeEmailAccountSession(), dispatchStore, context::get,
                 clock);
         this.startupNotice = opened.recoveredFromLostKey()
@@ -145,6 +155,14 @@ public final class DesktopServices implements AutoCloseable {
 
     public DispatchWorkflowService dispatch() {
         return dispatch;
+    }
+
+    public br.com.contadoresassociados.folhas.application.incidents.IncidentManagement.Service incidents() {
+        return incidents;
+    }
+
+    public br.com.contadoresassociados.folhas.application.preferences.WorkspacePreferences.Store preferences() {
+        return preferences;
     }
 
     public EmailAccountConnectionService emailConnection() {

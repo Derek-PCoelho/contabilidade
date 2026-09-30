@@ -98,6 +98,8 @@ public final class DocumentsModel {
 
     public final ObservableList<ReviewDocument> documents = FXCollections.observableArrayList();
     public final ObservableList<DocumentDispatchGroup> groups = FXCollections.observableArrayList();
+    public final ObservableList<br.com.contadoresassociados.folhas.contracts.documents.ReviewAuditEvent> auditEvents =
+            FXCollections.observableArrayList();
     public final ObservableList<ReviewDocument> visibleDocuments = FXCollections.observableArrayList();
     public final ObjectProperty<ReviewDocument> selectedDocument = new SimpleObjectProperty<>();
     public final ObjectProperty<DocumentDispatchGroup> selectedGroup = new SimpleObjectProperty<>();
@@ -452,6 +454,7 @@ public final class DocumentsModel {
                 .sorted(Comparator.comparing(ReviewDocument::importedAtUtc, Comparator.nullsLast(Comparator.reverseOrder()))).toList());
         groups.setAll(workspace.groups().stream()
                 .sorted(Comparator.comparing(DocumentDispatchGroup::updatedAtUtc, Comparator.nullsLast(Comparator.reverseOrder()))).toList());
+        auditEvents.setAll(workspace.auditEvents());
         ensureYears(workspace.documents());
         refreshVisible();
         var next = documents.stream().filter(d -> d.id().equals(selectedId)).findFirst()
@@ -559,7 +562,7 @@ public final class DocumentsModel {
         selectedMergeOption.set(options.isEmpty() ? null : options.getFirst());
     }
 
-    private String describeTypes(DocumentDispatchGroup group) {
+    String describeTypes(DocumentDispatchGroup group) {
         var types = group.documentIds().stream()
                 .map(id -> documents.stream().filter(d -> d.id().equals(id)).findFirst().orElse(null))
                 .filter(Objects::nonNull).map(d -> DocumentPresentation.label(d.documentType()))
@@ -1092,7 +1095,7 @@ public final class DocumentsModel {
         return selectedMonth == 0 ? month == null : selectedMonth.equals(month);
     }
 
-    private boolean matchesSelectedPeriod(DocumentDispatchGroup group) {
+    boolean matchesSelectedPeriod(DocumentDispatchGroup group) {
         return group.documentIds().stream().anyMatch(id -> documents.stream()
                 .anyMatch(d -> d.id().equals(id) && matchesSelectedPeriod(d.period())))
                 || matchesPeriodKey(group.periodKey());

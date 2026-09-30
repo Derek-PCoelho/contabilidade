@@ -136,8 +136,98 @@ public final class FriendlyText {
                 case COMPLETED -> "Concluído";
                 case CANCELLED -> "Cancelado";
             };
+            case br.com.contadoresassociados.folhas.application.incidents.IncidentManagement.Category c -> switch (c) {
+                case POTENTIAL_WRONG_RECIPIENT -> "Possível destinatário incorreto";
+                case POTENTIAL_WRONG_ATTACHMENT -> "Possível anexo incorreto";
+                case DUPLICATE_DELIVERY -> "Possível envio repetido";
+                case AMBIGUOUS_PROVIDER_RESULT -> "Resultado incerto do provedor";
+                case CREDENTIAL_EXPOSURE -> "Possível exposição de acesso";
+                case LOCAL_DATA_EXPOSURE -> "Possível exposição de arquivo local";
+                case OTHER -> "Outra ocorrência";
+            };
+            case br.com.contadoresassociados.folhas.application.incidents.IncidentManagement.Severity v -> switch (v) {
+                case LOW -> "Baixa";
+                case MEDIUM -> "Média";
+                case HIGH -> "Alta";
+                case CRITICAL -> "Crítica";
+            };
+            case br.com.contadoresassociados.folhas.application.incidents.IncidentManagement.Status st -> switch (st) {
+                case OPEN -> "Aberto";
+                case CONTAINED -> "Contido";
+                case INVESTIGATING -> "Em apuração";
+                case RESOLVED -> "Resolvido";
+                case CLOSED -> "Encerrado";
+            };
             case Collection<?> values -> values.stream().map(FriendlyText::of).collect(Collectors.joining(", "));
             default -> value.toString();
+        };
+    }
+
+    /** Ações e resultados de auditoria em linguagem simples ({@code TranslateAction} da versão .NET). */
+    public static String action(String value) {
+        if (value == null) {
+            return "";
+        }
+        return switch (value) {
+            case "unauthenticated-operator", "local-operator" -> "Operador local";
+            case "unauthenticated-connected-operator" -> "Operador conectado";
+            case "created" -> "Cadastro criado";
+            case "updated" -> "Cadastro atualizado";
+            case "deactivated" -> "Cadastro inativado";
+            case "reactivated" -> "Cadastro reativado";
+            case "archived" -> "Excluído da lista — auditoria preservada";
+            case "imported" -> "Cadastro restaurado";
+            case "document.imported", "document_imported" -> "Documento importado";
+            case "workspace.revalidated" -> "Documentos analisados novamente";
+            case "workspace_revalidated" -> "Documentos conferidos novamente";
+            case "document.period_corrected" -> "Competência corrigida";
+            case "document.period_restored" -> "Competência reconhecida restaurada";
+            case "document.removed_from_review" -> "Documento retirado da revisão";
+            case "document.client_overridden" -> "Cliente confirmado manualmente";
+            case "document.client_change_confirmed" -> "Mudança de cliente confirmada";
+            case "document.validated" -> "Documento conferido";
+            case "document.grouped" -> "Documento incluído em um conjunto";
+            case "group.split", "group_split" -> "Conjunto separado";
+            case "group.merged", "groups_merged" -> "Conjuntos unidos";
+            case "group.empty_removed" -> "Conjunto vazio retirado";
+            case "group.approved", "group_approved" -> "Conjunto liberado para mensagem";
+            case "group.approval_invalidated" -> "Aprovação revogada após alteração";
+            case "groups.selection_approved" -> "Conjuntos selecionados liberados";
+            case "groups.client_approved" -> "Conjuntos prontos do cliente liberados";
+            case "groups.bulk_approved" -> "Conjuntos prontos do mês liberados";
+            case "client_overridden" -> "Cliente corrigido manualmente";
+            case "dispatch_prepared", "dispatch_composed" -> "Mensagem preparada";
+            case "dispatch_approval_invalidated" -> "Aprovação da mensagem revogada após alteração";
+            case "dispatch_approved" -> "Mensagem aprovada";
+            case "dispatch_bulk_approved" -> "Mensagens prontas do mês aprovadas";
+            case "dispatch_batch_paused" -> "Sequência de mensagens pausada";
+            case "provider_call_started" -> "Operação de e-mail iniciada";
+            case "provider_call_completed" -> "Operação no serviço de e-mail concluída";
+            case "provider_reconciled" -> "Situação consultada sem repetir a operação";
+            case "dispatch_completed" -> "Operação de e-mail concluída";
+            case "dispatch_reconciled" -> "Resultado conferido";
+            case "reports_exported" -> "Relatórios exportados";
+            case "email_provider_connected" -> "Conta de e-mail conectada";
+            case "email_provider_disconnected" -> "Conta de e-mail desconectada";
+            case "connected" -> "Conectado";
+            case "disconnected" -> "Desconectado";
+            case "completed", "COMPLETED", "Completed" -> "Concluído";
+            case "pending" -> "Em andamento";
+            case "failed", "Failed", "FAILED" -> "Não concluído";
+            case "paused" -> "Pausado";
+            case "ReadyForApproval", "READY_FOR_APPROVAL" -> "Pronto para aprovação";
+            case "Approved", "APPROVED" -> "Aprovado";
+            case "BLOCKED" -> "Precisa de correção";
+            case "DraftCreated", "DRAFT_CREATED" -> "Rascunho criado";
+            case "AcceptedByProvider", "ACCEPTED_BY_PROVIDER" -> "Aceito pelo serviço de e-mail";
+            case "FAILED_TRANSIENT" -> "Falha temporária";
+            case "FAILED_PERMANENT" -> "Falha permanente";
+            case "Ambiguous", "AMBIGUOUS" -> "Resultado incerto";
+            case "Reconciled", "RECONCILED" -> "Situação conferida";
+            case "Cancelled", "CANCELLED" -> "Cancelado";
+            case "Snapshot de conteúdo e agrupamento; não autoriza envio de e-mail." ->
+                    "Conteúdo e organização registrados; isto ainda não envia e-mail.";
+            default -> value.replace('_', ' ');
         };
     }
 
