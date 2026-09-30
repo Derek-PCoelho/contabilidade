@@ -36,7 +36,10 @@ public final class PilotReadiness {
         WINDOWS_STATION_VALIDATED, BACKUP_RESTORE_VALIDATED, ROLLBACK_VALIDATED
     }
 
-    public record ChecklistItem(ChecklistKey key, boolean confirmed, String confirmedBy, OffsetDateTime confirmedAtUtc) {
+    /** O nome JSON {@code isConfirmed} mantém compatibilidade com o checklist gravado pela versão .NET. */
+    public record ChecklistItem(ChecklistKey key,
+            @com.fasterxml.jackson.annotation.JsonProperty("isConfirmed") boolean confirmed, String confirmedBy,
+            OffsetDateTime confirmedAtUtc) {
     }
 
     public record ChecklistAuditEvent(UUID id, ChecklistKey key, boolean previousValue, boolean currentValue,

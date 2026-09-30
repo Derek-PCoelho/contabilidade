@@ -29,6 +29,7 @@ subprojects {
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
         systemProperty("user.timezone", "America/Sao_Paulo")
+        jvmArgs("--enable-native-access=ALL-UNNAMED")
         testLogging { events("failed"); exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
     }
 }
