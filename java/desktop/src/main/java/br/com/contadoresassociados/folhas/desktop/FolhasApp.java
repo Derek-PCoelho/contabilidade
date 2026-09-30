@@ -1,11 +1,13 @@
 package br.com.contadoresassociados.folhas.desktop;
 
 import br.com.contadoresassociados.folhas.desktop.sections.ClientsSection;
+import br.com.contadoresassociados.folhas.desktop.sections.DocumentsSection;
 import br.com.contadoresassociados.folhas.desktop.sections.HomeSection;
 import br.com.contadoresassociados.folhas.desktop.sections.PendingSection;
 import br.com.contadoresassociados.folhas.desktop.sections.Section;
 import br.com.contadoresassociados.folhas.desktop.state.AppSection;
 import br.com.contadoresassociados.folhas.desktop.state.ClientsModel;
+import br.com.contadoresassociados.folhas.desktop.state.DocumentsModel;
 import br.com.contadoresassociados.folhas.desktop.state.ShellState;
 import br.com.contadoresassociados.folhas.desktop.ui.UiTasks;
 import java.time.ZonedDateTime;
@@ -58,10 +60,21 @@ public final class FolhasApp extends Application {
     }
 
     private ClientsModel clients;
+    private DocumentsModel documents;
 
     private Section createSection(AppSection section, ShellState state) {
         if (clients == null) {
-            clients = new ClientsModel(services.catalog(), tasks, state::status, null);
+            documents = new DocumentsModel(services.review(), services.recognition(), state, tasks,
+                    services.documentArchiveDirectory());
+            // Alterações cadastrais já revalidam a revisão na mesma transação; só recarregamos a tela.
+            clients = new ClientsModel(services.catalog(), tasks, state::status, documents::reload);
+            documents.onOpenClient(id -> {
+                state.show(AppSection.CLIENTS);
+                clients.openClient(id);
+            });
+            documents.onContinueToDispatch(() -> state.show(AppSection.DISPATCH));
+            DesktopEnvironment.env("FOLHAS_DESKTOP_INPUT_FOLDER").ifPresent(documents.inputFolder::set);
+            documents.loadIfNeeded();
         }
         return switch (section) {
             case HOME -> new HomeSection(state, () -> {
@@ -69,6 +82,7 @@ public final class FolhasApp extends Application {
                 clients.newClient();
             });
             case CLIENTS -> new ClientsSection(clients);
+            case DOCUMENTS -> new DocumentsSection(documents, state);
             default -> new PendingSection(section.title(), section.description());
         };
     }

@@ -195,3 +195,8 @@
 .preset-box { -fx-background-color: #F8F5EE; -fx-border-color: #E2DDD3; -fx-border-width: 1; -fx-background-radius: 10; -fx-border-radius: 10; -fx-padding: 12; }
 .counter { -fx-font-size: 10px; }
 .clean-list .list-cell:empty { -fx-background-color: transparent; }
+/* ------------------------------------------------------------------ Documentos */
+.period-accent { -fx-text-fill: #8C691B; -fx-font-size: 11px; -fx-font-weight: 600; }
+.subtitle { -fx-font-size: 16px; -fx-font-weight: 600; -fx-text-fill: #29261F; }
+.progress-bar > .bar { -fx-background-color: #9B7114; -fx-background-radius: 3; -fx-padding: 3; }
+.progress-bar > .track { -fx-background-color: #EAE4D8; -fx-background-radius: 3; }

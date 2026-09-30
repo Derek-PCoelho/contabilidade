@@ -2,16 +2,15 @@ package br.com.contadoresassociados.folhas.desktop;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import br.com.contadoresassociados.folhas.application.common.Clock;
 import br.com.contadoresassociados.folhas.desktop.sections.ClientsSection;
+import br.com.contadoresassociados.folhas.desktop.sections.DocumentsSection;
 import br.com.contadoresassociados.folhas.desktop.sections.HomeSection;
 import br.com.contadoresassociados.folhas.desktop.sections.PendingSection;
 import br.com.contadoresassociados.folhas.desktop.state.AppSection;
 import br.com.contadoresassociados.folhas.desktop.state.ClientsModel;
+import br.com.contadoresassociados.folhas.desktop.state.DocumentsModel;
 import br.com.contadoresassociados.folhas.desktop.state.ShellState;
 import br.com.contadoresassociados.folhas.desktop.ui.UiTasks;
-import br.com.contadoresassociados.folhas.infrastructure.clients.SqliteLocalClientCatalogService;
-import br.com.contadoresassociados.folhas.infrastructure.persistence.local.LocalDatabase;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import javafx.application.Platform;
@@ -26,6 +25,9 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
  */
 @EnabledIfEnvironmentVariable(named = "DISPLAY", matches = ".+")
 class MainWindowSmokeTest {
+
+    @org.junit.jupiter.api.io.TempDir
+    static java.nio.file.Path temp;
 
     @BeforeAll
     static void startToolkit() throws Exception {
@@ -42,13 +44,15 @@ class MainWindowSmokeTest {
     void buildsEverySectionAndNavigates() throws Exception {
         var result = new CompletableFuture<String>();
         Platform.runLater(() -> {
-            try (var db = LocalDatabase.inMemory()) {
+            try (var services = DesktopServices.create(temp, true)) {
                 var state = new ShellState(2026, 9);
-                var clients = new ClientsModel(new SqliteLocalClientCatalogService(db, Clock.system(), null),
-                        UiTasks.synchronous(), state::status, null);
+                var documents = new DocumentsModel(services.review(), services.recognition(), state, UiTasks.synchronous(),
+                        services.documentArchiveDirectory());
+                var clients = new ClientsModel(services.catalog(), UiTasks.synchronous(), state::status, documents::reload);
                 var window = new MainWindow(state, section -> switch (section) {
                     case HOME -> new HomeSection(state, clients::newClient);
                     case CLIENTS -> new ClientsSection(clients);
+                    case DOCUMENTS -> new DocumentsSection(documents, state);
                     default -> new PendingSection(section.title(), section.description());
                 });
                 var scene = new Scene(window, 1360, 860);

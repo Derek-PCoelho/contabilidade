@@ -13,6 +13,7 @@ dependencies {
     "implementation"(libs.slf4j)
     "runtimeOnly"(libs.logback)
     "testImplementation"("org.junit.jupiter:junit-jupiter-params")
+    "testImplementation"(libs.pdfbox)
 }
 
 application {

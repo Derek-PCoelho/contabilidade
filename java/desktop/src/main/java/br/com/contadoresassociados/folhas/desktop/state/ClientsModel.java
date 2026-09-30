@@ -318,6 +318,30 @@ public final class ClientsModel {
         }
     }
 
+    /**
+     * Abre um cadastro a partir de outra tela (ex.: documento com cliente inativo), incluindo
+     * inativos na lista — equivalente a {@code OpenInactiveClientFromDocumentAsync}.
+     */
+    public void openClient(UUID clientId) {
+        includeInactive.set(true);
+        searchText.set("");
+        tasks.run(() -> new Opened(loadEditorData(clientId), searchRows(true)), result -> {
+            var data = result.data();
+            clients.setAll(result.rows());
+            if (data == null) {
+                feedback("O cliente selecionado não foi encontrado. Atualize a lista e tente novamente.", true);
+                status.accept(feedbackMessage.get());
+                return;
+            }
+            applyEditorData(data);
+            clients.stream().filter(r -> r.id().equals(clientId)).findFirst().ifPresent(selectedClient::set);
+            focusEditor();
+            status.accept(clientActive.get()
+                    ? "Cadastro aberto. Confira CPF/CNPJ, nomes e identificadores; depois atualize o cadastro."
+                    : "Cadastro inativo aberto. Clique em “Reativar agora”; os documentos serão analisados novamente automaticamente.");
+        }, this::fail);
+    }
+
     public void openSelectedClient() {
         var row = selectedClient.get();
         if (row == null) {
@@ -336,6 +360,9 @@ public final class ClientsModel {
     }
 
     private record EditorData(ClientDetails details, ClientReadinessResponse readiness, List<MessageTemplateModel> templates) {
+    }
+
+    private record Opened(EditorData data, List<ClientRow> rows) {
     }
 
     private EditorData loadEditorData(UUID clientId) {
