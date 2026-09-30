@@ -3,6 +3,7 @@ package br.com.contadoresassociados.folhas.desktop.sections;
 import static br.com.contadoresassociados.folhas.desktop.ui.Controls.*;
 import static br.com.contadoresassociados.folhas.desktop.ui.Ui.*;
 
+import br.com.contadoresassociados.folhas.desktop.state.RolloutModel;
 import br.com.contadoresassociados.folhas.desktop.state.SettingsModel;
 import java.io.File;
 import java.nio.file.Path;
@@ -29,11 +30,14 @@ public final class SettingsSection implements Section {
 
     private final SettingsModel model;
     private final br.com.contadoresassociados.folhas.desktop.state.AccountModel account;
+    private final RolloutModel rollout;
     private final Node root;
 
-    public SettingsSection(SettingsModel model, br.com.contadoresassociados.folhas.desktop.state.AccountModel account) {
+    public SettingsSection(SettingsModel model, br.com.contadoresassociados.folhas.desktop.state.AccountModel account,
+            RolloutModel rollout) {
         this.model = model;
         this.account = account;
+        this.rollout = rollout;
         var content = new VBox(14, account(), email(), backup(), folders(), serverHelp(), updates(), retention(), about(), support());
         content.setMaxWidth(1040);
         var centered = new HBox(content);
@@ -52,6 +56,7 @@ public final class SettingsSection implements Section {
     public void onShown() {
         model.open();
         account.refresh();
+        rollout.refresh();
     }
 
     // ------------------------------------------------------------------ conta do escritório (6.1)
@@ -265,9 +270,73 @@ public final class SettingsSection implements Section {
         return box;
     }
 
+    /** Produção gradual — somente leitura; oculto enquanto a etapa estiver fechada. */
+    private Node productionPanel() {
+        var gates = new VBox(6);
+        rollout.productionGates().forEach(g -> gates.getChildren().add(new Label(g)));
+        var blockers = new VBox(4);
+        rollout.productionBlockers().forEach(b -> blockers.getChildren().add(wrap(muted("• " + b))));
+        var content = new VBox(10,
+                colored(new Label(rollout.productionStageLabel()), "#8C691B", true),
+                bold(new Label(rollout.productionStatusTitle())),
+                wrap(muted(rollout.productionStatusSummary())),
+                soft(6, gates),
+                blockers,
+                wrap(bold(new Label(rollout.productionLimitsSummary()))),
+                wrap(muted(rollout.productionRolesSummary())),
+                wrap(colored(new Label("Painel informativo: nenhuma trava de produção pode ser aberta por esta tela."),
+                        "#2D6535", false)));
+        blockers.setVisible(!rollout.productionReady() && rollout.productionBlockers().size() > 1);
+        blockers.setManaged(blockers.isVisible());
+        var pane = expander("Produção gradual (uso exclusivo do suporte)", content, false);
+        pane.setAccessibleText("Prontidão da produção gradual");
+        pane.setVisible(rollout.productionVisible());
+        pane.setManaged(rollout.productionVisible());
+        return pane;
+    }
+
+    /** Piloto supervisionado — checklist auditado; visível só com o piloto habilitado. */
+    private Node pilotPanel() {
+        var percent = colored(text(rollout.checklistProgress.asString("%d%%")), "#8C691B", true);
+        var header = new HBox(bold(new Label("Checklist de homologação")), spacer(), percent);
+        var progress = new ProgressBar();
+        progress.progressProperty().bind(rollout.checklistProgress.divide(100.0));
+        progress.setAccessibleText("Progresso do checklist de homologação");
+        progress.setMaxWidth(Double.MAX_VALUE);
+        progress.setPrefHeight(7);
+        var checks = new VBox(8);
+        RolloutModel.CHECKLIST_LABELS.forEach((key, label) -> checks.getChildren().add(checkBox(label, rollout.checklist.get(key))));
+        var safeguard = boxed(new VBox(wrap(colored(new Label(rollout.pilotSafeguardSummary()), "#2D6535", true))),
+                "#EAF4E8", null, 9, "12");
+        var save = button("Salvar checklist de homologação", "primary", rollout::saveChecklist);
+        save.disableProperty().bind(rollout.saving);
+        var content = new VBox(10,
+                colored(new Label(rollout.pilotEnvironmentLabel()), "#8C691B", true),
+                bold(text(rollout.pilotStatusTitle)),
+                wrap(muted(rollout.pilotStatusSummary)),
+                soft(6, header, progress, wrap(muted(rollout.pilotMetricsSummary))),
+                checks, safeguard, save);
+        var pane = expander("Piloto supervisionado (uso exclusivo do suporte)", content, false);
+        pane.setAccessibleText("Preparação do piloto supervisionado");
+        pane.setVisible(rollout.pilotMode());
+        pane.setManaged(rollout.pilotMode());
+        return pane;
+    }
+
+    private static Label bold(Label label) {
+        label.setStyle("-fx-font-weight: 600;");
+        return label;
+    }
+
     private Node support() {
-        var grid = columns(10, 7, 0, 1);
-        grid.getColumnConstraints().getFirst().setMinWidth(220);
+        // Grid "220,*" da versão .NET: rótulos em coluna fixa, valores no restante.
+        var grid = new javafx.scene.layout.GridPane();
+        grid.setHgap(10);
+        grid.setVgap(7);
+        var labels = new javafx.scene.layout.ColumnConstraints(220);
+        var values = new javafx.scene.layout.ColumnConstraints();
+        values.setHgrow(Priority.ALWAYS);
+        grid.getColumnConstraints().addAll(labels, values);
         grid.add(fieldLabel("Marco de desenvolvimento"), 0, 0);
         grid.add(colored(new Label(SettingsModel.PHASE), "#514C42", false), 1, 0);
         grid.add(fieldLabel("Ambiente"), 0, 1);
@@ -281,7 +350,7 @@ public final class SettingsSection implements Section {
         return expander("Detalhes técnicos para suporte", new VBox(10,
                 muted("Esta área é destinada ao proprietário técnico ou ao suporte. Ela não interfere no trabalho cotidiano."),
                 muted("Produção gradual e piloto supervisionado são controles de homologação e liberação técnica; não fazem parte do trabalho diário do cliente e permanecem ocultos quando fechados."),
-                grid, divider(), fieldLabel("Simulação de falhas para suporte"),
+                grid, productionPanel(), pilotPanel(), divider(), fieldLabel("Simulação de falhas para suporte"),
                 muted("Não altere durante o uso normal. Esta opção existe somente para testar recuperação e mensagens de erro sem enviar e-mail real."),
                 scenario, destination), false);
     }

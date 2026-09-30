@@ -60,6 +60,8 @@ public final class DesktopServices implements AutoCloseable {
             new br.com.contadoresassociados.folhas.infrastructure.security.AesGcmProtectedBackupService();
     private final br.com.contadoresassociados.folhas.application.updates.AppUpdates.Service updates;
     private final String startupNotice;
+    private final DesktopRollout rollout;
+    private final br.com.contadoresassociados.folhas.application.pilot.PilotReadiness.Service pilot;
 
     /**
      * Permissões do perfil Local — as mesmas do {@code LocalDesktopOperationContextAccessor} (.NET):
@@ -69,7 +71,10 @@ public final class DesktopServices implements AutoCloseable {
             AppPermission.BATCH_APPROVE, AppPermission.EMAIL_DRAFT, AppPermission.AUDIT_EXPORT,
             // Pendência 2.10 criou permissões próprias para incidentes; o operador local continua podendo
             // consultar a auditoria e registrar ocorrências, como na versão .NET (que não verificava).
-            AppPermission.AUDIT_READ, AppPermission.INCIDENTS_MANAGE);
+            AppPermission.AUDIT_READ, AppPermission.INCIDENTS_MANAGE,
+            // O checklist do piloto era editável pelo operador local no .NET; a pendência 2.10 passou a
+            // exigir settings.manage, concedida aqui porque o perfil Local tem um único operador na máquina.
+            AppPermission.SETTINGS_MANAGE);
 
     /**
      * Sem servidor central não há quem autorize operações externas: o preflight falha fechado
@@ -84,7 +89,8 @@ public final class DesktopServices implements AutoCloseable {
     public static final String LOCAL_SCOPE_KEY = "unauthenticated-local";
     public static final String LOCAL_ACTOR_ID = "unauthenticated-operator";
 
-    private DesktopServices(Path dataDirectory, Clock clock, SecretStore vault, LocalDatabaseKeys.Opened opened) {
+    private DesktopServices(Path dataDirectory, Clock clock, SecretStore vault, LocalDatabaseKeys.Opened opened,
+            DesktopRollout rollout) {
         this.dataDirectory = dataDirectory;
         this.clock = clock;
         this.vault = vault;
@@ -111,7 +117,8 @@ public final class DesktopServices implements AutoCloseable {
         // cadastral (tudo ou nada), como na versão .NET.
         this.catalog = new SqliteLocalClientCatalogService(database, clock,
                 () -> review.revalidate(CancellationToken.NONE));
-        var dispatchOptions = DispatchWorkflowOptions.defaults();
+        this.rollout = rollout;
+        var dispatchOptions = rollout.applyTo(DispatchWorkflowOptions.defaults());
         var dispatchStore = new SqliteDispatchWorkflowStore(database);
         java.util.function.Supplier<DispatchExecutionContext> context = this::executionContext;
         this.dispatch = new DispatchWorkflowService(dispatchStore, review,
@@ -140,6 +147,9 @@ public final class DesktopServices implements AutoCloseable {
                 new br.com.contadoresassociados.folhas.infrastructure.persistence.local.SqliteKeyValueStores
                         .UpdateSequences(database, clock),
                 java.time.Clock.systemUTC());
+        this.pilot = new br.com.contadoresassociados.folhas.application.pilot.PilotReadiness.Service(
+                new br.com.contadoresassociados.folhas.infrastructure.persistence.local.SqliteKeyValueStores
+                        .PilotChecklist(database, clock), context::get, clock, rollout.pilot());
         this.emailConnection = new EmailAccountConnectionService(new FakeEmailAccountSession(), dispatchStore, context::get,
                 clock);
         this.startupNotice = opened.recoveredFromLostKey()
@@ -173,10 +183,15 @@ public final class DesktopServices implements AutoCloseable {
     }
 
     public static DesktopServices create(Path dataDirectory, boolean allowInMemoryVault) {
+        return create(dataDirectory, allowInMemoryVault, DesktopRollout.fromEnvironment());
+    }
+
+    /** Com opções de piloto/produção explícitas (testes e ferramentas de suporte). */
+    public static DesktopServices create(Path dataDirectory, boolean allowInMemoryVault, DesktopRollout rollout) {
         var clock = Clock.system();
         var vault = NativeSecretStores.forCurrentPlatform(dataDirectory, allowInMemoryVault);
         var opened = LocalDatabaseKeys.openEncrypted(dataDirectory.resolve("cache.db"), vault);
-        return new DesktopServices(dataDirectory, clock, vault, opened);
+        return new DesktopServices(dataDirectory, clock, vault, opened, rollout);
     }
 
     public Path dataDirectory() {
@@ -225,6 +240,15 @@ public final class DesktopServices implements AutoCloseable {
 
     public EmailAccountConnectionService emailConnection() {
         return emailConnection;
+    }
+
+    /** Opções de piloto (Phase11) e produção gradual (Phase12) desta instalação. */
+    public DesktopRollout rollout() {
+        return rollout;
+    }
+
+    public br.com.contadoresassociados.folhas.application.pilot.PilotReadiness.Service pilot() {
+        return pilot;
     }
 
     /** Pasta padrão dos relatórios (mesma da versão .NET: {@code LocalApplicationData/FolhasDaMichelly/Reports}). */

@@ -17,6 +17,12 @@ if [[ "${PREVIEW_CONNECTED:-0}" == "1" ]]; then
 else
   unset FOLHAS_API_BASE_ADDRESS
 fi
+# Painéis de suporte (Configurações → Detalhes técnicos): PREVIEW_ROLLOUT=1 liga o piloto
+# supervisionado (Phase11) e a produção gradual em etapa limitada (Phase12), só para conferência visual.
+if [[ "${PREVIEW_ROLLOUT:-0}" == "1" ]]; then
+  export FOLHAS_PHASE11_ENABLED=true FOLHAS_PHASE12_ENABLED=true FOLHAS_PHASE12_STAGE=Limited
+  export FOLHAS_PHASE12_STABLERELEASEAPPROVED=true
+fi
 export JAVA_OPTS="${JAVA_OPTS:-} -Dprism.order=sw -Dprism.lcdtext=false"
 # O cofre em memória perde a chave a cada reinício: a pré-visualização recria o banco local.
 rm -rf "$FOLHAS_DESKTOP_DATA_DIR"

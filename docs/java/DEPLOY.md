@@ -102,6 +102,26 @@ O instalador já inclui o Java; o computador do escritório não precisa ter Jav
 | `FOLHAS_DESKTOP_DATA_DIR` | Pasta de dados alternativa. O padrão é o mesmo da versão .NET: `%LOCALAPPDATA%\FolhasDaMichelly` no Windows e `~/Library/Application Support/FolhasDaMichelly` no macOS. |
 | `FOLHAS_UPDATE_FEED`, `FOLHAS_UPDATE_PUBLIC_KEYS`, `FOLHAS_UPDATE_PUBLISHER` | Canal de atualização assinado. Sem esses valores, as atualizações ficam desligadas. |
 
+#### Piloto supervisionado e produção gradual (somente suporte)
+
+Vêm todos **desligados/fechados** por padrão, e o operador do escritório não precisa mexer neles. Cada chave pode ser informada em dois formatos: `FOLHAS_PHASE11_ENABLED` ou o nome da versão .NET, `Phase11__Enabled`.
+
+| Chave | Padrão | Efeito |
+|---|---|---|
+| `Phase11:Enabled` | `false` | Liga o piloto: Teste e Rascunho liberados, envio aos clientes bloqueado, e aparece o painel com o checklist em Configurações → Detalhes técnicos para suporte. |
+| `Phase11:EnvironmentName` | `staging` | Precisa ser `staging` para o piloto ficar "pronto". |
+| `Phase11:AllowTest` / `AllowDraft` / `AllowSend` | `true` / `true` / `false` | Operações liberadas durante o piloto. |
+| `Phase11:RequireNonProductionData` | `true` | Exige dados fictícios ou anonimizados. |
+| `Phase11:MaximumClients` | `5` | Limite de clientes do piloto (1 a 5). |
+| `Phase12:Stage` | `Closed` | `Limited` ou `Gradual` mostram o painel informativo de produção. |
+| `Phase12:Enabled`, `PilotApproved`, `AllowSend`, `StableReleaseApproved`, `BackupRestoreDrillCompleted`, `MonitoringReady`, `IncidentResponseReady`, `SupportReady` | `false` | Controles formais. O envio real só é liberado quando **todos** estão aprovados. |
+| `Phase12:MaximumBatchSize` / `MaximumDailySends` | `5` / `20` | Limites por sequência e por dia. |
+| `Phase12:MinimumApplicationVersion` | versão atual | Versão mínima exigida. |
+| `Phase12:AllowedRoles` | `OwnerTechnical,Administrator,Manager` | Papéis autorizados. Só papéis privilegiados são aceitos. |
+| `Phase10:EmailSendEnabled`, `Phase10:StableChannelEnabled`, `Phase6:EmailSendEnabled` | `false` | Chave geral de envio e canal estável. |
+
+O painel de produção é somente leitura: nenhuma trava pode ser aberta pela tela. No perfil Local, o operador pode salvar o checklist do piloto, e cada alteração fica registrada com o autor e o horário.
+
 **Compatibilidade com a versão .NET.** O Desktop Java abre o `cache.db` existente usando a chave guardada no cofre do sistema (DPAPI ou Keychain). As preferências, o acervo e a pasta de relatórios continuam nos mesmos lugares.
 
 ### 3.3 Login (perfil Conectado)
