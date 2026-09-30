@@ -14,7 +14,8 @@ public final class SamplePdfs {
         write(dir.resolve("folha-padaria-2026-09.pdf"), List.of("FOLHA DE PAGAMENTO", "Empregador: Padaria Sao Joao Ltda",
                 "Empregador CNPJ: 11.222.333/0001-81", "Competencia: 09/2026", "Total da folha: R$ 12.345,67"));
         write(dir.resolve("prolabore-padaria-2026-09.pdf"), List.of("PRO-LABORE", "Empresa: Padaria Sao Joao Ltda",
-                "CNPJ: 11.222.333/0001-81", "Competencia: 09/2026", "Valor total: R$ 3.000,00"));
+                "Empresa CNPJ: 11.222.333/0001-81", "Socio CPF: 529.982.247-25", "Competencia: 09/2026",
+                "Valor liquido: R$ 3.000,00"));
         write(dir.resolve("folha-cliente-desconhecido-2026-09.pdf"), List.of("FOLHA DE PAGAMENTO", "Empregador: Mercado Aurora Ltda",
                 "Empregador CNPJ: 45.723.174/0001-10", "Competencia: 09/2026", "Total da folha: R$ 8.900,00"));
         Files.writeString(dir.resolve("planilha-nao-suportada.xlsx"), "exemplo");
