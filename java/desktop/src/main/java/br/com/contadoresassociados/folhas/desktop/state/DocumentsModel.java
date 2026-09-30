@@ -93,7 +93,8 @@ public final class DocumentsModel {
     private final RecognitionPorts.DocumentExtractor recognition;
     private final ShellState shell;
     private final UiTasks tasks;
-    private final Path archiveDirectory;
+    /** Pasta do acervo (editável em Configurações). */
+    public final ObjectProperty<Path> archiveDirectory = new SimpleObjectProperty<>();
     private final DocumentPeriodParser periodParser = new DocumentPeriodParser();
 
     public final ObservableList<ReviewDocument> documents = FXCollections.observableArrayList();
@@ -139,7 +140,7 @@ public final class DocumentsModel {
         this.recognition = recognition;
         this.shell = shell;
         this.tasks = tasks;
-        this.archiveDirectory = archiveDirectory;
+        this.archiveDirectory.set(archiveDirectory);
         shell.selectedYear().addListener((obs, old, now) -> refreshPeriod());
         shell.selectedMonth().addListener((obs, old, now) -> refreshPeriod());
         selectedDocument.addListener((obs, old, now) -> onDocumentSelected(now));
@@ -763,6 +764,7 @@ public final class DocumentsModel {
 
     /** Copia ao acervo {@code ano/mês}; nome com prefixo do SHA-256. Cópia atômica via temporário. */
     private Staged stage(Path source, DocumentPeriod period, Integer fallbackYear, Integer fallbackMonth) {
+        var archiveDirectory = this.archiveDirectory.get();
         if (archiveDirectory == null) {
             return new Staged(source, false);
         }

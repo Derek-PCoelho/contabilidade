@@ -54,6 +54,9 @@ public final class DesktopServices implements AutoCloseable {
     private final EmailAccountConnectionService emailConnection;
     private final br.com.contadoresassociados.folhas.application.incidents.IncidentManagement.Service incidents;
     private final br.com.contadoresassociados.folhas.application.preferences.WorkspacePreferences.Store preferences;
+    private final br.com.contadoresassociados.folhas.application.security.ProtectedBackupService backup =
+            new br.com.contadoresassociados.folhas.infrastructure.security.AesGcmProtectedBackupService();
+    private final br.com.contadoresassociados.folhas.application.updates.AppUpdates.Service updates;
     private final String startupNotice;
 
     /**
@@ -110,6 +113,21 @@ public final class DesktopServices implements AutoCloseable {
                 dispatchStore, context::get, new DefaultSensitiveTextRedactor(), clock);
         this.preferences = new br.com.contadoresassociados.folhas.infrastructure.persistence.local.SqliteKeyValueStores
                 .Preferences(database, clock);
+        // Atualizações: feed assinado (pendência 7.x). Sem endereço/chave oficiais o serviço
+        // informa que o canal não está disponível — nada é baixado nem instalado.
+        this.updates = new br.com.contadoresassociados.folhas.infrastructure.updates.SignedFeedAppUpdateService(
+                new br.com.contadoresassociados.folhas.infrastructure.updates.SignedFeedAppUpdateService.Options(
+                        DesktopEnvironment.env("FOLHAS_UPDATE_FEED").map(java.net.URI::create).orElse(null),
+                        DesktopEnvironment.env("FOLHAS_UPDATE_PUBLIC_KEYS").map(k -> java.util.List.of(k.split(",")))
+                                .orElse(java.util.List.of()),
+                        dataDirectory.resolve("Updates"), 0, null),
+                null, br.com.contadoresassociados.folhas.infrastructure.updates.SignedFeedAppUpdateService.currentPlatform(),
+                br.com.contadoresassociados.folhas.infrastructure.updates.PlatformInstallers.forCurrentPlatform(
+                        DesktopEnvironment.env("FOLHAS_UPDATE_PUBLISHER").orElse("Contadores Associados"),
+                        javafx.application.Platform::exit),
+                new br.com.contadoresassociados.folhas.infrastructure.persistence.local.SqliteKeyValueStores
+                        .UpdateSequences(database, clock),
+                java.time.Clock.systemUTC());
         this.emailConnection = new EmailAccountConnectionService(new FakeEmailAccountSession(), dispatchStore, context::get,
                 clock);
         this.startupNotice = opened.recoveredFromLostKey()
@@ -163,6 +181,14 @@ public final class DesktopServices implements AutoCloseable {
 
     public br.com.contadoresassociados.folhas.application.preferences.WorkspacePreferences.Store preferences() {
         return preferences;
+    }
+
+    public br.com.contadoresassociados.folhas.application.security.ProtectedBackupService backup() {
+        return backup;
+    }
+
+    public br.com.contadoresassociados.folhas.application.updates.AppUpdates.Service updates() {
+        return updates;
     }
 
     public EmailAccountConnectionService emailConnection() {

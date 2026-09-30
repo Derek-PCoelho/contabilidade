@@ -8,12 +8,14 @@ import br.com.contadoresassociados.folhas.desktop.sections.HomeSection;
 import br.com.contadoresassociados.folhas.desktop.sections.PendingSection;
 import br.com.contadoresassociados.folhas.desktop.sections.ReportsSection;
 import br.com.contadoresassociados.folhas.desktop.sections.Section;
+import br.com.contadoresassociados.folhas.desktop.sections.SettingsSection;
 import br.com.contadoresassociados.folhas.desktop.state.AppSection;
 import br.com.contadoresassociados.folhas.desktop.state.ClientsModel;
 import br.com.contadoresassociados.folhas.desktop.state.DispatchModel;
 import br.com.contadoresassociados.folhas.desktop.state.DocumentsModel;
 import br.com.contadoresassociados.folhas.desktop.state.HistoryModel;
 import br.com.contadoresassociados.folhas.desktop.state.ReportsModel;
+import br.com.contadoresassociados.folhas.desktop.state.SettingsModel;
 import br.com.contadoresassociados.folhas.desktop.state.ShellState;
 import br.com.contadoresassociados.folhas.desktop.ui.UiTasks;
 import java.time.ZonedDateTime;
@@ -70,6 +72,7 @@ public final class FolhasApp extends Application {
     private DispatchModel dispatch;
     private ReportsModel reports;
     private HistoryModel history;
+    private SettingsModel settings;
 
     private Section createSection(AppSection section, ShellState state) {
         if (clients == null) {
@@ -94,6 +97,12 @@ public final class FolhasApp extends Application {
             var today = java.time.LocalDate.now(br.com.contadoresassociados.folhas.application.common.Clock.BRAZIL);
             reports = new ReportsModel(services.dispatch(), services.catalog(), dispatch, documents, state, tasks,
                     services.reportsDirectory(), today.getYear(), today.getMonthValue());
+            settings = new SettingsModel(services.emailConnection(), services.catalog(), services.backup(), services.updates(),
+                    services.preferences(), documents, reports, dispatch, state, tasks, services.clock());
+            settings.onCatalogChanged(() -> {
+                clients.loadClients();
+                documents.reload();
+            });
             DesktopEnvironment.env("FOLHAS_DESKTOP_INPUT_FOLDER").ifPresent(documents.inputFolder::set);
             documents.loadIfNeeded();
         }
@@ -107,12 +116,16 @@ public final class FolhasApp extends Application {
             case DISPATCH -> new DispatchSection(dispatch);
             case REPORTS -> new ReportsSection(reports);
             case HISTORY -> new HistorySection(history);
+            case SETTINGS -> new SettingsSection(settings);
             default -> new PendingSection(section.title(), section.description());
         };
     }
 
     @Override
     public void stop() {
+        if (settings != null) {
+            settings.onApplicationClosing();
+        }
         if (services != null) {
             services.close();
         }
