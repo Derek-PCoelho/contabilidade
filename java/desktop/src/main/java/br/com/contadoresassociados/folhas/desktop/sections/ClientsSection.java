@@ -1,5 +1,6 @@
 package br.com.contadoresassociados.folhas.desktop.sections;
 
+import static br.com.contadoresassociados.folhas.desktop.ui.Controls.*;
 import static br.com.contadoresassociados.folhas.desktop.ui.Ui.*;
 
 import br.com.contadoresassociados.folhas.contracts.clients.ClientIdentifierModel;
@@ -89,7 +90,7 @@ public final class ClientsSection implements Section {
             var status = row.isActive() ? text("Ativo", "tag-active") : text("Inativo", "tag-inactive");
             var detail = new HBox(text(row.taxIdDisplay(), "row-sub-small"), spacer(), status);
             return rowBox(new VBox(3, name, detail));
-        });
+        }, 72);
         list.setMaxHeight(230);
         list.setAccessibleText("Clientes cadastrados");
         list.getSelectionModel().selectedItemProperty().addListener((obs, old, now) -> model.openSelectedClientIfDifferent());
@@ -184,7 +185,7 @@ public final class ClientsSection implements Section {
             var bottom = new HBox(10, text(p.email() == null ? "E-mail não informado" : p.email(), "row-sub"), spacer(),
                     text(p.cpf() == null ? "CPF não informado" : p.cpf(), "row-sub"));
             return softBox(new VBox(top, bottom));
-        });
+        }, 72);
         list.setMaxHeight(170);
         var card = card(12, heading("SÓCIOS E REPRESENTANTES · OPCIONAL", "Quem representa esta empresa?",
                 "Informe somente quando for útil ao cadastro. O CPF do sócio nunca será usado para associar um documento à empresa."),
@@ -209,7 +210,7 @@ public final class ClientsSection implements Section {
                 bottom.getChildren().add(text("E-mail principal", "tag-active"));
             }
             return softBox(new VBox(3, top, bottom));
-        });
+        }, 72);
         list.setMaxHeight(200);
         return card(13, heading("2 · CONTATO DE ENTREGA", "Quem recebe os documentos?",
                 "Na maioria dos casos, basta o e-mail da própria empresa. Adicione outros somente quando houver uma necessidade real de cópia."),
@@ -233,7 +234,7 @@ public final class ClientsSection implements Section {
                 row.getChildren().add(text("Matriz", "tag-active"));
             }
             return softBox(row);
-        });
+        }, 72);
         list.setMaxHeight(190);
         var content = new VBox(12, muted("Use esta seção quando um mesmo cliente possui matriz e filiais com CNPJs próprios. Isso evita associar o documento à unidade errada."),
                 grid, list, right(button("Remover unidade selecionada", "ghost", model::removeEstablishment)));
@@ -251,7 +252,7 @@ public final class ClientsSection implements Section {
             var kind = text(FriendlyText.of(i.type()), "row-accent");
             kind.setMinWidth(240);
             return softBox(new HBox(kind, text(i.value(), "row-title-plain")));
-        });
+        }, 72);
         list.setMaxHeight(170);
         var content = new VBox(12, muted("Cadastre aqui apenas aliases ou códigos adicionais que realmente aparecem nos documentos. O CPF ou CNPJ principal já foi informado acima."),
                 row, list, right(button("Remover item selecionado", "ghost", model::removeIdentifier)));
@@ -302,7 +303,7 @@ public final class ClientsSection implements Section {
             var top = new HBox(8, text(t.name(), "row-title"), spacer(),
                     t.isActive() ? text("Ativa", "tag-active-small") : text("Inativa", "tag-inactive-small"));
             return softBox(new VBox(top, text(t.subjectTemplate(), "row-sub")));
-        });
+        }, 72);
         list.setMaxHeight(420);
         var toggle = button(model.templateStatusActionLabel(), "ghost", model::toggleTemplateActive);
         toggle.disableProperty().bind(model.hasSelectedTemplate().not());
@@ -361,74 +362,4 @@ public final class ClientsSection implements Section {
         return control;
     }
 
-    private static TextField textField(StringProperty value, String prompt) {
-        var field = new TextField();
-        field.textProperty().bindBidirectional(value);
-        field.setPromptText(prompt);
-        field.setMaxWidth(Double.MAX_VALUE);
-        return field;
-    }
-
-    private static CheckBox checkBox(String label, javafx.beans.property.BooleanProperty value) {
-        var box = new CheckBox(label);
-        box.selectedProperty().bindBidirectional(value);
-        return box;
-    }
-
-    private static <T> ComboBox<T> comboBox(ObservableList<T> items, ObjectProperty<T> value) {
-        var combo = new ComboBox<>(items);
-        combo.valueProperty().bindBidirectional(value);
-        combo.setConverter(FriendlyText.converter());
-        combo.setMaxWidth(Double.MAX_VALUE);
-        return combo;
-    }
-
-    private static <T> ListView<T> listView(ObservableList<T> items, ObjectProperty<T> selected, Function<T, Node> render) {
-        var list = new ListView<>(items);
-        list.getStyleClass().add("clean-list");
-        list.setCellFactory(view -> new ListCell<>() {
-            @Override
-            protected void updateItem(T item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(null);
-                setGraphic(empty || item == null ? null : render.apply(item));
-            }
-        });
-        list.getSelectionModel().selectedItemProperty().addListener((obs, old, now) -> selected.set(now));
-        selected.addListener((obs, old, now) -> {
-            if (now == null) {
-                list.getSelectionModel().clearSelection();
-            } else if (list.getSelectionModel().getSelectedItem() != now) {
-                list.getSelectionModel().select(now);
-            }
-        });
-        // Altura acompanha o conteúdo até o limite (MaxHeight do Avalonia).
-        list.prefHeightProperty().bind(Bindings.createDoubleBinding(
-                () -> Math.max(56, items.size() * 64.0 + 4), items));
-        list.setPlaceholder(new Label(""));
-        return list;
-    }
-
-    private static Node rowBox(Node content) {
-        var box = new VBox(content);
-        box.getStyleClass().add("list-row");
-        return box;
-    }
-
-    private static Node softBox(Node content) {
-        var box = new VBox(content);
-        box.getStyleClass().add("soft-row");
-        return box;
-    }
-
-    private static Node right(Node node) {
-        var box = new HBox(node);
-        box.setAlignment(Pos.CENTER_RIGHT);
-        return box;
-    }
-
-    private static <T extends javafx.scene.layout.Region> T grow(T node) {
-        HBox.setHgrow(node, Priority.ALWAYS);
-        return node;
-    }
 }

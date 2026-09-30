@@ -1,0 +1,38 @@
+# Server + PostgreSQL para homologação/produção pequena. Um proxy TLS (Caddy, nginx, balanceador
+# da nuvem) deve ficar na frente: o Server só aceita X-Forwarded-* dos IPs em FOLHAS_KNOWN_PROXIES.
+name: folhas
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: folhas
+      POSTGRES_USER: folhas
+      POSTGRES_PASSWORD: ${FOLHAS_DB_PASSWORD:?defina FOLHAS_DB_PASSWORD no .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U folhas -d folhas"]
+      interval: 10s
+      retries: 10
+
+  server:
+    build:
+      context: ../..
+      dockerfile: deploy/java/Dockerfile
+    image: folhas-server:${FOLHAS_VERSION:-1.0.0}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      FOLHAS_DB_URL: jdbc:postgresql://db:5432/folhas
+      FOLHAS_DB_USER: folhas
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./secrets:/run/secrets/folhas:ro
+
+volumes:
+  pgdata:

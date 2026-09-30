@@ -14,6 +14,7 @@ dependencies {
     "implementation"(libs.zxing)
     "implementation"("org.postgresql:postgresql")
     "testImplementation"("org.springframework.boot:spring-boot-starter-test")
+    "testImplementation"(project(":infrastructure"))
     "testImplementation"("org.junit.jupiter:junit-jupiter-params")
 }
 

@@ -15,6 +15,9 @@ public interface UiTasks {
 
     <T> void run(Callable<T> work, Consumer<T> onSuccess, Consumer<Throwable> onError);
 
+    /** Executa na thread da interface (progresso de operações longas). */
+    void ui(Runnable action);
+
     default void run(Runnable work, Runnable onSuccess, Consumer<Throwable> onError) {
         run(() -> {
             work.run();
@@ -35,6 +38,11 @@ public interface UiTasks {
                 }
                 onSuccess.accept(value);
             }
+
+            @Override
+            public void ui(Runnable action) {
+                action.run();
+            }
         };
     }
 
@@ -52,6 +60,11 @@ public interface UiTasks {
                         Platform.runLater(() -> onError.accept(e));
                     }
                 });
+            }
+
+            @Override
+            public void ui(Runnable action) {
+                Platform.runLater(action);
             }
         };
     }
