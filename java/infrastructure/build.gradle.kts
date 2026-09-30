@@ -5,5 +5,7 @@ dependencies {
     "implementation"(libs.jna)
     "implementation"(libs.pdfbox)
     "implementation"(libs.poi)
+    "implementation"(libs.angus.mail)
+    "implementation"(libs.msal)
     "testImplementation"("org.junit.jupiter:junit-jupiter-params")
 }

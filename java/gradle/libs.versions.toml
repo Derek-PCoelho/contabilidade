@@ -12,8 +12,8 @@ poi = "5.4.1"
 openpdf = "2.4.0"
 javafx = "25"
 jna = "5.18.0"
-msal = "1.23.1"
-jakarta-mail = "2.0.4"
+msal = "1.26.0"
+angus-mail = "2.0.5"
 nimbus = "10.5"
 totp = "1.7.1"
 slf4j = "2.0.17"
@@ -39,7 +39,7 @@ poi = { module = "org.apache.poi:poi-ooxml", version.ref = "poi" }
 openpdf = { module = "com.github.librepdf:openpdf", version.ref = "openpdf" }
 jna = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
 msal = { module = "com.microsoft.azure:msal4j", version.ref = "msal" }
-jakarta-mail = { module = "com.sun.mail:jakarta.mail", version.ref = "jakarta-mail" }
+angus-mail = { module = "org.eclipse.angus:angus-mail", version.ref = "angus-mail" }
 nimbus-jose = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbus" }
 totp = { module = "dev.samstevens.totp:totp", version.ref = "totp" }
 slf4j = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }

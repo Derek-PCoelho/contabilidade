@@ -30,6 +30,8 @@ subprojects {
         useJUnitPlatform()
         systemProperty("user.timezone", "America/Sao_Paulo")
         jvmArgs("--enable-native-access=ALL-UNNAMED")
+        environment("LC_ALL", "C.UTF-8")
+        environment("LANG", "C.UTF-8")
         testLogging { events("failed"); exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
     }
 }
