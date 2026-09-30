@@ -24,6 +24,7 @@ public final class LocalDatabase implements AutoCloseable {
     private final Path file;
     private final Connection connection;
     private final ReentrantLock lock = new ReentrantLock();
+    private boolean inTransaction;
 
     private LocalDatabase(Path file, Connection connection) {
         this.file = file;
@@ -73,9 +74,18 @@ public final class LocalDatabase implements AutoCloseable {
         }
     }
 
+    /**
+     * Executa {@code work} numa transação. Chamadas aninhadas (mesma thread) participam da
+     * transação externa: só a mais externa confirma, e qualquer exceção desfaz o conjunto inteiro
+     * — usado para gravar o cadastro e revalidar a revisão de forma atômica.
+     */
     public <T> T transaction(SqlWork<T> work) {
         lock.lock();
         try {
+            if (inTransaction) {
+                return work.run(connection);
+            }
+            inTransaction = true;
             connection.setAutoCommit(false);
             try {
                 var result = work.run(connection);
@@ -85,6 +95,7 @@ public final class LocalDatabase implements AutoCloseable {
                 connection.rollback();
                 throw e;
             } finally {
+                inTransaction = false;
                 connection.setAutoCommit(true);
             }
         } catch (SQLException e) {

@@ -86,6 +86,11 @@ public final class CentralApiClient {
                 .POST(HttpRequest.BodyPublishers.ofByteArray(Json.writeBytes(body))));
     }
 
+    public JsonResponse putJson(String path, Object body) {
+        return send(builder(path).header("Content-Type", "application/json; charset=utf-8")
+                .PUT(HttpRequest.BodyPublishers.ofByteArray(Json.writeBytes(body))));
+    }
+
     private HttpRequest.Builder builder(String path) {
         var relative = path.startsWith("/") ? path.substring(1) : path;
         var builder = HttpRequest.newBuilder(baseAddress.resolve(relative)).timeout(timeout)
