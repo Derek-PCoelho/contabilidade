@@ -3,5 +3,6 @@ dependencies {
     "implementation"(libs.sqlite)
     "implementation"(libs.slf4j)
     "implementation"(libs.jna)
+    "implementation"(libs.pdfbox)
     "testImplementation"("org.junit.jupiter:junit-jupiter-params")
 }
