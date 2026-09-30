@@ -1,0 +1,3 @@
+package br.com.contadoresassociados.folhas.contracts.dispatch;
+
+public enum DispatchItemState { BLOCKED, READY_FOR_APPROVAL, APPROVED, DRAFT_CREATING, DRAFT_CREATED, SENDING, ACCEPTED_BY_PROVIDER, FAILED, AMBIGUOUS, RECONCILED, COMPLETED, CANCELLED }
