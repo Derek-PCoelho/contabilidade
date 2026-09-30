@@ -1,10 +1,13 @@
 package br.com.contadoresassociados.folhas.desktop;
 
+import br.com.contadoresassociados.folhas.desktop.sections.ClientsSection;
 import br.com.contadoresassociados.folhas.desktop.sections.HomeSection;
 import br.com.contadoresassociados.folhas.desktop.sections.PendingSection;
 import br.com.contadoresassociados.folhas.desktop.sections.Section;
 import br.com.contadoresassociados.folhas.desktop.state.AppSection;
+import br.com.contadoresassociados.folhas.desktop.state.ClientsModel;
 import br.com.contadoresassociados.folhas.desktop.state.ShellState;
+import br.com.contadoresassociados.folhas.desktop.ui.UiTasks;
 import java.time.ZonedDateTime;
 import java.util.Locale;
 import javafx.application.Application;
@@ -20,6 +23,7 @@ public final class FolhasApp extends Application {
 
     private static final Logger LOG = LoggerFactory.getLogger(FolhasApp.class);
     private DesktopServices services;
+    private final UiTasks tasks = UiTasks.background();
 
     @Override
     public void init() {
@@ -53,9 +57,18 @@ public final class FolhasApp extends Application {
         stage.show();
     }
 
+    private ClientsModel clients;
+
     private Section createSection(AppSection section, ShellState state) {
+        if (clients == null) {
+            clients = new ClientsModel(services.catalog(), tasks, state::status, null);
+        }
         return switch (section) {
-            case HOME -> new HomeSection(state, () -> state.show(AppSection.CLIENTS));
+            case HOME -> new HomeSection(state, () -> {
+                state.show(AppSection.CLIENTS);
+                clients.newClient();
+            });
+            case CLIENTS -> new ClientsSection(clients);
             default -> new PendingSection(section.title(), section.description());
         };
     }

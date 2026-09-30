@@ -180,3 +180,18 @@
 .hero-text { -fx-text-fill: #C9C3B8; -fx-font-size: 13px; }
 .hero-photo-caption { -fx-text-fill: #D9B453; -fx-font-weight: 600; }
 .step-caption { -fx-text-fill: #4B463D; }
+/* ------------------------------------------------------------------ linhas de lista (Clientes) */
+.soft-row { -fx-background-color: #F8F5EE; -fx-background-radius: 10; -fx-padding: 13; }
+.clean-list .list-cell:filled:selected .soft-row { -fx-background-color: #FBF3DE; -fx-border-color: #C89A2B; -fx-border-radius: 10; }
+.row-title { -fx-font-weight: 600; -fx-text-fill: #29261F; }
+.row-title-plain { -fx-text-fill: #29261F; }
+.row-accent { -fx-text-fill: #8C691B; }
+.row-sub { -fx-text-fill: #766F62; }
+.row-sub-small { -fx-text-fill: #736C60; -fx-font-size: 11px; }
+.tag-active { -fx-text-fill: #2F7A43; -fx-font-size: 12px; -fx-font-weight: 600; }
+.tag-inactive { -fx-text-fill: #7B6B59; -fx-font-size: 12px; -fx-font-weight: 600; }
+.tag-active-small { -fx-text-fill: #2F7A43; -fx-font-size: 11px; -fx-font-weight: 600; }
+.tag-inactive-small { -fx-text-fill: #7B6B59; -fx-font-size: 11px; -fx-font-weight: 600; }
+.preset-box { -fx-background-color: #F8F5EE; -fx-border-color: #E2DDD3; -fx-border-width: 1; -fx-background-radius: 10; -fx-border-radius: 10; -fx-padding: 12; }
+.counter { -fx-font-size: 10px; }
+.clean-list .list-cell:empty { -fx-background-color: transparent; }
