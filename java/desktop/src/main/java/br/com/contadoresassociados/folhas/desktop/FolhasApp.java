@@ -5,11 +5,13 @@ import br.com.contadoresassociados.folhas.desktop.sections.DispatchSection;
 import br.com.contadoresassociados.folhas.desktop.sections.DocumentsSection;
 import br.com.contadoresassociados.folhas.desktop.sections.HomeSection;
 import br.com.contadoresassociados.folhas.desktop.sections.PendingSection;
+import br.com.contadoresassociados.folhas.desktop.sections.ReportsSection;
 import br.com.contadoresassociados.folhas.desktop.sections.Section;
 import br.com.contadoresassociados.folhas.desktop.state.AppSection;
 import br.com.contadoresassociados.folhas.desktop.state.ClientsModel;
 import br.com.contadoresassociados.folhas.desktop.state.DispatchModel;
 import br.com.contadoresassociados.folhas.desktop.state.DocumentsModel;
+import br.com.contadoresassociados.folhas.desktop.state.ReportsModel;
 import br.com.contadoresassociados.folhas.desktop.state.ShellState;
 import br.com.contadoresassociados.folhas.desktop.ui.UiTasks;
 import java.time.ZonedDateTime;
@@ -64,6 +66,7 @@ public final class FolhasApp extends Application {
     private ClientsModel clients;
     private DocumentsModel documents;
     private DispatchModel dispatch;
+    private ReportsModel reports;
 
     private Section createSection(AppSection section, ShellState state) {
         if (clients == null) {
@@ -80,6 +83,9 @@ public final class FolhasApp extends Application {
             dispatch.onShowDocuments(() -> state.show(AppSection.DOCUMENTS));
             dispatch.onShowReports(() -> state.show(AppSection.REPORTS));
             dispatch.onReportIncident(attempt -> state.show(AppSection.HISTORY));
+            var today = java.time.LocalDate.now(br.com.contadoresassociados.folhas.application.common.Clock.BRAZIL);
+            reports = new ReportsModel(services.dispatch(), services.catalog(), dispatch, documents, state, tasks,
+                    services.reportsDirectory(), today.getYear(), today.getMonthValue());
             DesktopEnvironment.env("FOLHAS_DESKTOP_INPUT_FOLDER").ifPresent(documents.inputFolder::set);
             documents.loadIfNeeded();
         }
@@ -91,6 +97,7 @@ public final class FolhasApp extends Application {
             case CLIENTS -> new ClientsSection(clients);
             case DOCUMENTS -> new DocumentsSection(documents, state);
             case DISPATCH -> new DispatchSection(dispatch);
+            case REPORTS -> new ReportsSection(reports);
             default -> new PendingSection(section.title(), section.description());
         };
     }

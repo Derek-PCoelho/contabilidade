@@ -151,6 +151,11 @@ public final class DesktopServices implements AutoCloseable {
         return emailConnection;
     }
 
+    /** Pasta padrão dos relatórios (mesma da versão .NET: {@code LocalApplicationData/FolhasDaMichelly/Reports}). */
+    public Path reportsDirectory() {
+        return dataDirectory.resolve("Reports");
+    }
+
     /** Acervo organizado por ano/mês (mesmo local padrão da versão .NET). */
     public Path documentArchiveDirectory() {
         return dataDirectory.resolve("Documentos");
