@@ -21,7 +21,21 @@ import br.com.contadoresassociados.folhas.infrastructure.documents.ProfileDocume
 import br.com.contadoresassociados.folhas.infrastructure.documents.SqliteLocalClientResolver;
 import br.com.contadoresassociados.folhas.infrastructure.persistence.local.SqliteDocumentReviewStore;
 import br.com.contadoresassociados.folhas.infrastructure.persistence.local.SqliteRecognitionCache;
+import br.com.contadoresassociados.folhas.application.dispatch.DeterministicDispatchMessageComposer;
+import br.com.contadoresassociados.folhas.application.dispatch.DispatchExecutionContext;
+import br.com.contadoresassociados.folhas.application.dispatch.DispatchWorkflowException;
+import br.com.contadoresassociados.folhas.application.dispatch.DispatchWorkflowOptions;
+import br.com.contadoresassociados.folhas.application.dispatch.DispatchWorkflowService;
+import br.com.contadoresassociados.folhas.application.dispatch.EmailAccountConnectionService;
+import br.com.contadoresassociados.folhas.application.dispatch.RemoteEmailSendGuard;
+import br.com.contadoresassociados.folhas.domain.identity.AppPermission;
+import br.com.contadoresassociados.folhas.infrastructure.dispatch.FakeEmailAccountSession;
+import br.com.contadoresassociados.folhas.infrastructure.dispatch.FakeEmailProvider;
+import br.com.contadoresassociados.folhas.infrastructure.persistence.local.SqliteDispatchWorkflowStore;
+import br.com.contadoresassociados.folhas.infrastructure.reports.StandardDispatchReportExporter;
+import br.com.contadoresassociados.folhas.infrastructure.security.DefaultSensitiveTextRedactor;
 import java.nio.file.Path;
+import java.util.Set;
 
 /**
  * Composição dos serviços do Desktop (equivalente ao {@code AddDesktopPhase2} da versão .NET).
@@ -36,7 +50,25 @@ public final class DesktopServices implements AutoCloseable {
     private final ClientCatalogService catalog;
     private final DocumentReviewService review;
     private final DocumentRecognitionService recognition;
+    private final DispatchWorkflowService dispatch;
+    private final EmailAccountConnectionService emailConnection;
     private final String startupNotice;
+
+    /**
+     * Permissões do perfil Local — as mesmas do {@code LocalDesktopOperationContextAccessor} (.NET):
+     * sem {@code email.send}, o envio real exige o perfil Conectado.
+     */
+    public static final Set<AppPermission> LOCAL_PERMISSIONS = Set.of(AppPermission.DOCUMENTS_PROCESS,
+            AppPermission.BATCH_APPROVE, AppPermission.EMAIL_DRAFT, AppPermission.AUDIT_EXPORT);
+
+    /**
+     * Sem servidor central não há quem autorize operações externas: o preflight falha fechado
+     * (pendência 2.4). O modo local seguro não passa por aqui.
+     */
+    private static final RemoteEmailSendGuard LOCAL_GUARD = request -> {
+        throw new DispatchWorkflowException("REMOTE_SEND_GUARD_UNAVAILABLE",
+                "O controle central não está disponível no perfil local.");
+    };
 
     /** Perfil Local: mesmo escopo e operador da versão .NET ({@code LocalDesktopOperationContextAccessor}). */
     public static final String LOCAL_SCOPE_KEY = "unauthenticated-local";
@@ -59,6 +91,17 @@ public final class DesktopServices implements AutoCloseable {
         // cadastral (tudo ou nada), como na versão .NET.
         this.catalog = new SqliteLocalClientCatalogService(database, clock,
                 () -> review.revalidate(CancellationToken.NONE));
+        var dispatchOptions = DispatchWorkflowOptions.defaults();
+        var dispatchStore = new SqliteDispatchWorkflowStore(database);
+        java.util.function.Supplier<DispatchExecutionContext> context = () -> new DispatchExecutionContext(LOCAL_SCOPE_KEY,
+                LOCAL_ACTOR_ID, "Operador local", LOCAL_PERMISSIONS);
+        this.dispatch = new DispatchWorkflowService(dispatchStore, review,
+                new DeterministicDispatchMessageComposer(catalog, clock, dispatchOptions),
+                new FakeEmailProvider(new FakeEmailProvider.Options(dataDirectory.resolve("FakeOutbox"), null, null), clock),
+                context::get, LOCAL_GUARD, new StandardDispatchReportExporter(clock, Clock.BRAZIL), clock, dispatchOptions,
+                new DefaultSensitiveTextRedactor());
+        this.emailConnection = new EmailAccountConnectionService(new FakeEmailAccountSession(), dispatchStore, context::get,
+                clock);
         this.startupNotice = opened.recoveredFromLostKey()
                 ? "A chave do banco local não estava no cofre. O arquivo anterior foi preservado em "
                         + opened.quarantinedFile().getFileName() + " e um novo banco foi criado."
@@ -98,6 +141,14 @@ public final class DesktopServices implements AutoCloseable {
 
     public DocumentRecognitionService recognition() {
         return recognition;
+    }
+
+    public DispatchWorkflowService dispatch() {
+        return dispatch;
+    }
+
+    public EmailAccountConnectionService emailConnection() {
+        return emailConnection;
     }
 
     /** Acervo organizado por ano/mês (mesmo local padrão da versão .NET). */

@@ -12,6 +12,11 @@ import br.com.contadoresassociados.folhas.contracts.documents.ReviewDocumentStat
 import br.com.contadoresassociados.folhas.contracts.documents.ReviewGroupState;
 import br.com.contadoresassociados.folhas.contracts.documents.SemanticFieldRole;
 import br.com.contadoresassociados.folhas.contracts.documents.ValidationSeverity;
+import br.com.contadoresassociados.folhas.contracts.dispatch.DispatchItemState;
+import br.com.contadoresassociados.folhas.contracts.dispatch.DispatchOperationMode;
+import br.com.contadoresassociados.folhas.contracts.dispatch.FakeDeliveryScenario;
+import java.util.Collection;
+import java.util.stream.Collectors;
 import javafx.util.StringConverter;
 
 /** Rótulos em português para os enums exibidos (equivalente ao {@code FriendlyTextConverter}). */
@@ -105,6 +110,33 @@ public final class FriendlyText {
                 case FUZZY_SUGGESTION -> "Sugestão por nome — exige conferência";
                 case MANUAL_OVERRIDE -> "Cliente confirmado manualmente";
             };
+            case DispatchOperationMode m -> switch (m) {
+                case TEST -> "Teste seguro";
+                case DRAFT -> "Salvar como rascunho";
+                case SEND -> "Enviar aos destinatários";
+            };
+            case FakeDeliveryScenario f -> switch (f) {
+                case SUCCESS -> "Funcionamento normal";
+                case TRANSIENT_FAILURE -> "Falha temporária";
+                case PERMANENT_FAILURE -> "Falha permanente";
+                case TIMEOUT -> "Tempo esgotado";
+                case AMBIGUOUS -> "Resultado incerto";
+            };
+            case DispatchItemState d -> switch (d) {
+                case BLOCKED -> "Precisa de correção";
+                case READY_FOR_APPROVAL -> "Pronto para conferir";
+                case APPROVED -> "Aprovado";
+                case DRAFT_CREATING -> "Criando rascunho";
+                case DRAFT_CREATED -> "Rascunho criado";
+                case SENDING -> "Enviando";
+                case ACCEPTED_BY_PROVIDER -> "Recebido pelo serviço de e-mail";
+                case FAILED -> "Não concluído";
+                case AMBIGUOUS -> "Resultado incerto — conferir";
+                case RECONCILED -> "Situação conferida";
+                case COMPLETED -> "Concluído";
+                case CANCELLED -> "Cancelado";
+            };
+            case Collection<?> values -> values.stream().map(FriendlyText::of).collect(Collectors.joining(", "));
             default -> value.toString();
         };
     }

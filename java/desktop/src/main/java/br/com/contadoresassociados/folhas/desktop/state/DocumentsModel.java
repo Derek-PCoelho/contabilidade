@@ -1059,7 +1059,7 @@ public final class DocumentsModel {
 
     // ================================================================ filtro de competência
 
-    private boolean singleMonthSelected() {
+    boolean singleMonthSelected() {
         var y = shell.selectedYear().get();
         var m = shell.selectedMonth().get();
         return y != null && y.year() != null && m != null && m.month() != null && m.month() > 0;
@@ -1067,6 +1067,15 @@ public final class DocumentsModel {
 
     private Stream<DocumentDispatchGroup> visibleGroups() {
         return groups.stream().filter(this::matchesSelectedPeriod);
+    }
+
+    /** Conjuntos liberados da competência selecionada ({@code VisibleApprovedReviewGroups}). */
+    List<DocumentDispatchGroup> visibleApprovedGroups() {
+        return visibleGroups().filter(DocumentDispatchGroup::isApproved).toList();
+    }
+
+    boolean isVisibleApproved(DocumentDispatchGroup group) {
+        return group != null && group.isApproved() && matchesSelectedPeriod(group);
     }
 
     boolean matchesSelectedPeriod(DocumentPeriod period) {

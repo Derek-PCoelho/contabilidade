@@ -1,12 +1,14 @@
 package br.com.contadoresassociados.folhas.desktop;
 
 import br.com.contadoresassociados.folhas.desktop.sections.ClientsSection;
+import br.com.contadoresassociados.folhas.desktop.sections.DispatchSection;
 import br.com.contadoresassociados.folhas.desktop.sections.DocumentsSection;
 import br.com.contadoresassociados.folhas.desktop.sections.HomeSection;
 import br.com.contadoresassociados.folhas.desktop.sections.PendingSection;
 import br.com.contadoresassociados.folhas.desktop.sections.Section;
 import br.com.contadoresassociados.folhas.desktop.state.AppSection;
 import br.com.contadoresassociados.folhas.desktop.state.ClientsModel;
+import br.com.contadoresassociados.folhas.desktop.state.DispatchModel;
 import br.com.contadoresassociados.folhas.desktop.state.DocumentsModel;
 import br.com.contadoresassociados.folhas.desktop.state.ShellState;
 import br.com.contadoresassociados.folhas.desktop.ui.UiTasks;
@@ -61,6 +63,7 @@ public final class FolhasApp extends Application {
 
     private ClientsModel clients;
     private DocumentsModel documents;
+    private DispatchModel dispatch;
 
     private Section createSection(AppSection section, ShellState state) {
         if (clients == null) {
@@ -73,6 +76,10 @@ public final class FolhasApp extends Application {
                 clients.openClient(id);
             });
             documents.onContinueToDispatch(() -> state.show(AppSection.DISPATCH));
+            dispatch = new DispatchModel(services.dispatch(), services.emailConnection(), documents, state, tasks);
+            dispatch.onShowDocuments(() -> state.show(AppSection.DOCUMENTS));
+            dispatch.onShowReports(() -> state.show(AppSection.REPORTS));
+            dispatch.onReportIncident(attempt -> state.show(AppSection.HISTORY));
             DesktopEnvironment.env("FOLHAS_DESKTOP_INPUT_FOLDER").ifPresent(documents.inputFolder::set);
             documents.loadIfNeeded();
         }
@@ -83,6 +90,7 @@ public final class FolhasApp extends Application {
             });
             case CLIENTS -> new ClientsSection(clients);
             case DOCUMENTS -> new DocumentsSection(documents, state);
+            case DISPATCH -> new DispatchSection(dispatch);
             default -> new PendingSection(section.title(), section.description());
         };
     }
